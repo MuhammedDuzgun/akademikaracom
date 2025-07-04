@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>akademikara.com - Akademik Makale Araştırma</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>akademikara.com</h1>
+        <p>Akademik araştırmalarınız için benzer makaleleri ve literatürü kolayca keşfedin.</p>
+    </header>
+    <main>
+        <section class="search-section">
+            <h3>Benzer Makaleler Araştır</h3>
+            <form id="article-form">
+                <label for="title">Makale Başlığı</label>
+                <input type="text" id="title" name="title" required>
+                <label for="abstract">Makale Özeti</label>
+                <textarea id="abstract" name="abstract" rows="4" required></textarea>
+                <button type="submit">Araştır</button>
+            </form>
+        </section>
+        
+        <section class="search-section">
+            <h3>Makale Kaynaklarını Araştır</h3>
+            <form id="source-form">
+                <label for="source-title">Makale Başlığı</label>
+                <input type="text" id="source-title" name="source-title" required>
+                <button type="submit">Kaynakları Getir</button>
+            </form>
+        </section>
+        <section id="results-section" class="results-section" style="display:none;">
+            <h2>Benzer Makaleler</h2>
+            <div id="results"></div>
+        </section>
+        <section id="sources-section" class="sources-section" style="display:none;">
+            <button class="back-button" onclick="backToResults()">← Makale Listesine Dön</button>
+            <h2>Makale Kaynakları</h2>
+            <div id="sources"></div>
+        </section>
+        <section id="loading-section" style="display:none;">
+            <p>Yükleniyor...</p>
+        </section>
+        <section id="error-section" style="display:none;">
+            <p id="error-message"></p>
+        </section>
+    </main>
+    <script src="main.js"></script>
+</body>
+</html> 
