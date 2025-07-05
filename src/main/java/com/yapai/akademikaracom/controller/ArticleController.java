@@ -1,5 +1,9 @@
 package com.yapai.akademikaracom.controller;
 
+import com.yapai.akademikaracom.GetAbstractOfArticleRequest;
+import com.yapai.akademikaracom.request.GetArticlesSourcesRequest;
+import com.yapai.akademikaracom.request.GetQuotationOfArticleRequest;
+import com.yapai.akademikaracom.response.AbstractOfArticleResponse;
 import com.yapai.akademikaracom.response.ArticleResponse;
 import com.yapai.akademikaracom.request.GetArticleRequest;
 import com.yapai.akademikaracom.response.ArticleSourceResponse;
@@ -26,10 +30,25 @@ public class ArticleController {
     }
 
 
-    @GetMapping("/sources")
-    public ResponseEntity<List<ArticleSourceResponse>> getArticleSources(@RequestParam String articleTitle) {
-        List<ArticleSourceResponse> sourcesOfArticle = articleAIService.getSourcesOfArticle(articleTitle);
+    @PostMapping("/sources")
+    public ResponseEntity<List<ArticleSourceResponse>> getArticleSources
+            (@RequestBody GetArticlesSourcesRequest request) {
+        List<ArticleSourceResponse> sourcesOfArticle = articleAIService.getSourcesOfArticle(request);
         return ResponseEntity.ok(sourcesOfArticle);
+    }
+
+    @PostMapping("/quotations")
+    public ResponseEntity<List<ArticleResponse>> getQuotedArticles
+            (@RequestBody GetQuotationOfArticleRequest request) {
+        List<ArticleResponse> quotationOfArticle = articleAIService.getQuotationOfArticle(request);
+        return ResponseEntity.ok(quotationOfArticle);
+    }
+
+    @PostMapping("/abstract")
+    public ResponseEntity<AbstractOfArticleResponse> getAbstractOfArticle
+            (@RequestBody GetAbstractOfArticleRequest request) {
+        AbstractOfArticleResponse abstractOfArticle = articleAIService.getAbstractOfArticle(request);
+        return ResponseEntity.ok(abstractOfArticle);
     }
 
 }
