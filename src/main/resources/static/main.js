@@ -36,8 +36,7 @@ class AkademikaraApp {
             results: document.getElementById('results'),
             sources: document.getElementById('sources'),
             quotations: document.getElementById('quotations'),
-            prosList: document.getElementById('pros-list'),
-            consList: document.getElementById('cons-list')
+            proscons: document.getElementById('pros-list')
         };
 
         // UI elements
@@ -133,6 +132,11 @@ class AkademikaraApp {
             return false;
         }
 
+        // Textarea için minimum uzunluk kontrolü
+        if (field.tagName === 'TEXTAREA' && field.value.trim().length < 10) {
+            return false;
+        }
+
         return true;
     }
 
@@ -147,6 +151,10 @@ class AkademikaraApp {
 
         if (field.type === 'text' && field.value.trim().length < 3) {
             return 'En az 3 karakter girmelisiniz.';
+        }
+
+        if (field.tagName === 'TEXTAREA' && field.value.trim().length < 10) {
+            return 'En az 10 karakter girmelisiniz.';
         }
 
         return 'Geçersiz değer.';
@@ -365,17 +373,11 @@ class AkademikaraApp {
                 title: formData.get('proscons-title').trim()
             };
 
-            console.log('ProsCons API çağrısı:', data); // Debug için
-
             const result = await this.makeApiCall('/api/v1/articles/abstract', data);
-            
-            console.log('ProsCons API sonucu:', result); // Debug için
-            
             this.displayProsCons(result);
             this.resultsSections.proscons.style.display = 'block';
             
         } catch (error) {
-            console.error('ProsCons API hatası:', error); // Debug için
             this.showError(`Analiz sırasında hata oluştu: ${error.message}`);
         } finally {
             this.hideLoading(button);
@@ -434,17 +436,16 @@ class AkademikaraApp {
     }
 
     displayProsCons(result) {
-        this.containers.prosList.innerHTML = '';
-        this.containers.consList.innerHTML = '';
+        this.containers.proscons.innerHTML = '';
 
         // Result kontrolü
         if (!result) {
-            this.containers.prosList.innerHTML = '<p class="no-results">Analiz sonucu alınamadı.</p>';
+            this.containers.proscons.innerHTML = '<p class="no-results">Analiz sonucu alınamadı.</p>';
             return;
         }
 
         if ((!result.pros || result.pros.length === 0) && (!result.cons || result.cons.length === 0)) {
-            this.containers.prosList.innerHTML = '<p class="no-results">Bu makale için iyi veya kötü yan bulunamadı.</p>';
+            this.containers.proscons.innerHTML = '<p class="no-results">Bu makale için iyi veya kötü yan bulunamadı.</p>';
             return;
         }
 
@@ -460,7 +461,7 @@ class AkademikaraApp {
         }
         
         tableHtml += '</tbody></table>';
-        this.containers.prosList.innerHTML = tableHtml;
+        this.containers.proscons.innerHTML = tableHtml;
     }
 
     // Utility methods
