@@ -1,4 +1,4 @@
-package com.yapai.akademikaracom;
+package com.yapai.akademikaracom.request;
 
 public record GetAbstractOfArticleRequest(String title) {
 }

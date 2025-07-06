@@ -1,6 +1,6 @@
 package com.yapai.akademikaracom.service.ai;
 
-import com.yapai.akademikaracom.GetAbstractOfArticleRequest;
+import com.yapai.akademikaracom.request.GetAbstractOfArticleRequest;
 import com.yapai.akademikaracom.request.GetArticlesSourcesRequest;
 import com.yapai.akademikaracom.request.GetQuotationOfArticleRequest;
 import com.yapai.akademikaracom.response.AbstractOfArticleResponse;
@@ -38,7 +38,7 @@ public class ArticleAIService {
 
     public List<ArticleSourceResponse> getSourcesOfArticle(GetArticlesSourcesRequest request) {
         return clientBuilder
-                .defaultSystem(Prompts.GET_SIMILAR_ARTICLES)
+                .defaultSystem(Prompts.ARTICLES_SOURCES)
                 .build()
                 .prompt()
                 .user(u-> u.text("makalenin başlığı : " + request.title() +

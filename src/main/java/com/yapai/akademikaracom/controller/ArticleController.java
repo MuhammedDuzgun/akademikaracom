@@ -1,6 +1,6 @@
 package com.yapai.akademikaracom.controller;
 
-import com.yapai.akademikaracom.GetAbstractOfArticleRequest;
+import com.yapai.akademikaracom.request.GetAbstractOfArticleRequest;
 import com.yapai.akademikaracom.request.GetArticlesSourcesRequest;
 import com.yapai.akademikaracom.request.GetQuotationOfArticleRequest;
 import com.yapai.akademikaracom.response.AbstractOfArticleResponse;
