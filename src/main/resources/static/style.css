@@ -422,6 +422,11 @@ main {
     color: var(--text-secondary);
     margin-bottom: var(--spacing-sm);
     font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.article-card .btn-secondary {
+    margin-top: var(--spacing-md);
 }
 
 .article-card strong {
@@ -531,7 +536,7 @@ main {
 .proscons-table td {
     border: none;
     padding: var(--spacing-lg);
-    text-align: center;
+    text-align: left;
     font-size: 1rem;
     vertical-align: top;
     word-break: break-word;
@@ -560,6 +565,8 @@ main {
     color: var(--text-muted);
     font-style: italic;
 }
+
+
 
 /* Footer */
 footer {
@@ -653,6 +660,18 @@ footer {
     .results-section {
         padding: var(--spacing-lg);
     }
+}
+
+/* No results message */
+.no-results {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: var(--spacing-xl);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--border-color);
+    margin: var(--spacing-lg) 0;
 }
 
 /* Print styles */

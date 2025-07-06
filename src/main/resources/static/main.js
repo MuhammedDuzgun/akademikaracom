@@ -128,6 +128,11 @@ class AkademikaraApp {
             return emailRegex.test(field.value);
         }
 
+        // Text input için minimum uzunluk kontrolü
+        if (field.type === 'text' && field.value.trim().length < 3) {
+            return false;
+        }
+
         return true;
     }
 
@@ -138,6 +143,10 @@ class AkademikaraApp {
         
         if (field.type === 'email' && field.value) {
             return 'Geçerli bir e-posta adresi girin.';
+        }
+
+        if (field.type === 'text' && field.value.trim().length < 3) {
+            return 'En az 3 karakter girmelisiniz.';
         }
 
         return 'Geçersiz değer.';
@@ -172,6 +181,7 @@ class AkademikaraApp {
 
     // Error handling
     showError(message) {
+        console.error('Hata gösteriliyor:', message);
         this.errorMessage.textContent = message;
         this.errorSection.style.display = 'block';
         this.errorSection.scrollIntoView({ behavior: 'smooth' });
@@ -191,19 +201,42 @@ class AkademikaraApp {
 
     // API calls
     async makeApiCall(endpoint, data) {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    // If response is not JSON, use the text as is
+                    if (errorText) {
+                        errorMessage = errorText;
+                    }
+                }
+                
+                throw new Error(errorMessage);
+            }
+
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                throw new Error('Sunucuya bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin.');
+            }
+            throw error;
         }
-
-        return response.json();
     }
 
     // Form handlers
@@ -332,11 +365,17 @@ class AkademikaraApp {
                 title: formData.get('proscons-title').trim()
             };
 
+            console.log('ProsCons API çağrısı:', data); // Debug için
+
             const result = await this.makeApiCall('/api/v1/articles/abstract', data);
+            
+            console.log('ProsCons API sonucu:', result); // Debug için
+            
             this.displayProsCons(result);
             this.resultsSections.proscons.style.display = 'block';
             
         } catch (error) {
+            console.error('ProsCons API hatası:', error); // Debug için
             this.showError(`Analiz sırasında hata oluştu: ${error.message}`);
         } finally {
             this.hideLoading(button);
@@ -364,8 +403,9 @@ class AkademikaraApp {
                 <h3>${this.escapeHtml(article.articleName)}</h3>
                 <p><strong>Yazar:</strong> ${this.escapeHtml(article.authorName)}</p>
                 <p><strong>Yıl:</strong> ${this.escapeHtml(article.year)}</p>
+                ${article.publishingPlace ? `<p><strong>Yayın Yeri:</strong> ${this.escapeHtml(article.publishingPlace)}</p>` : ''}
                 ${this.currentSection === 'similar-articles' ? 
-                    `<button class="btn-secondary" onclick="app.showSources('${this.escapeHtml(article.articleName)}')">Kaynakları Göster</button>` : 
+                    `<button class="btn-secondary" onclick="showSources('${this.escapeHtml(article.articleName)}')">Kaynakları Göster</button>` : 
                     ''}
             `;
             container.appendChild(card);
@@ -397,8 +437,14 @@ class AkademikaraApp {
         this.containers.prosList.innerHTML = '';
         this.containers.consList.innerHTML = '';
 
+        // Result kontrolü
+        if (!result) {
+            this.containers.prosList.innerHTML = '<p class="no-results">Analiz sonucu alınamadı.</p>';
+            return;
+        }
+
         if ((!result.pros || result.pros.length === 0) && (!result.cons || result.cons.length === 0)) {
-            this.containers.prosList.innerHTML = '<p class="no-results">İyi veya kötü yan bulunamadı.</p>';
+            this.containers.prosList.innerHTML = '<p class="no-results">Bu makale için iyi veya kötü yan bulunamadı.</p>';
             return;
         }
 
