@@ -1,11 +1,14 @@
 package com.yapai.akademikaracom.controller;
 
+import com.yapai.akademikaracom.response.ArticleAnalyze;
 import com.yapai.akademikaracom.response.ArticleResponse;
 import com.yapai.akademikaracom.request.GetArticleRequest;
 import com.yapai.akademikaracom.service.ai.ArticleAIService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -24,4 +27,9 @@ public class ArticleController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/analyze-article")
+    public ResponseEntity<ArticleAnalyze> analyzePdfArticle(@RequestParam MultipartFile file) throws IOException {
+        ArticleAnalyze analyze = articleAIService.analyzePdfArticle(file);
+        return ResponseEntity.ok(analyze);
+    }
 }
