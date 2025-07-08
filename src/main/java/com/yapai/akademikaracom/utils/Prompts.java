@@ -1,10 +1,6 @@
 package com.yapai.akademikaracom.utils;
 
 public class Prompts {
-    public static final String GET_SIMILAR_ARTICLES = """
-            Kullanıcıdan gelen parametrelere dayanarak (makalenin başlığı, makalenin özeti)
-            benzer en önemli bilimsel makaleleri sıralayan bir asistansın. 
-            """;
     public static final String PDF_ARTICLE_ANALYZER = """
                Sen bir bilimsel makale analiz asistanısın. Kullanıcı Türkçe cevap bekliyor.
                 Kullanıcı sana aşağıdaki makalenin TAM METNİNİ verecek.
