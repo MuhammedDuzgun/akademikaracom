@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akademikara | Giriş Yap</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 8vh auto 0 auto;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem 2rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .login-logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 2.2rem;
+            letter-spacing: 0.5px;
+        }
+        .google-btn {
+            width: 100%;
+            background: #fff;
+            color: #222;
+            border: none;
+            border-radius: var(--radius);
+            padding: 0.9rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7em;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .google-btn:hover {
+            background: #f1f5f9;
+            box-shadow: 0 6px 24px 0 rgba(37,99,235,0.13);
+        }
+        .google-icon {
+            width: 1.5em;
+            height: 1.5em;
+            display: inline-block;
+        }
+        @media (max-width: 600px) {
+            .login-container {
+                padding: 1.2rem 0.5rem 1rem 0.5rem;
+            }
+            .login-logo {
+                font-size: 1.3rem;
+            }
+            .google-btn {
+                font-size: 1rem;
+                padding: 0.7rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-logo">Akademikara</div>
+        <a href="/oauth2/authorization/google" class="google-btn">
+            <span class="google-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.2 3.6l6.85-6.85C35.6 2.6 30.2 0 24 0 14.82 0 6.68 5.8 2.7 14.1l7.98 6.2C12.2 13.2 17.6 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.6-.14-3.13-.41-4.6H24v9.1h12.4c-.54 2.9-2.2 5.36-4.7 7.04l7.2 5.6C43.7 37.2 46.1 31.4 46.1 24.5z"/><path fill="#FBBC05" d="M10.68 28.7c-1.1-3.2-1.1-6.7 0-9.9l-7.98-6.2C.9 17.1 0 20.4 0 24c0 3.6.9 6.9 2.7 10l7.98-6.2z"/><path fill="#EA4335" d="M24 48c6.2 0 11.4-2.05 15.2-5.6l-7.2-5.6c-2 1.4-4.6 2.2-8 2.2-6.4 0-11.8-3.7-13.7-9l-7.98 6.2C6.68 42.2 14.82 48 24 48z"/></g></svg>
+            </span>
+            Google ile giriş yap
+        </a>
+    </div>
+</body>
+</html> 

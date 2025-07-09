@@ -1,522 +1,185 @@
-// Main application class
-class AkademikaraApp {
-    constructor() {
-        this.initializeElements();
-        this.initializeEventListeners();
-        this.currentSection = 'similar-articles';
-    }
+// Akademikara - Modern PDF Analiz & Atıf Bulucu
 
-    initializeElements() {
-        // Form elements
-        this.forms = {
-            article: document.getElementById('article-form'),
-            source: document.getElementById('source-form'),
-            quotation: document.getElementById('quotation-form'),
-            proscons: document.getElementById('proscons-form')
-        };
-
-        // Section elements
-        this.sections = {
-            similar: document.getElementById('similar-articles'),
-            sources: document.getElementById('article-sources'),
-            quotations: document.getElementById('article-quotations'),
-            analysis: document.getElementById('article-analysis')
-        };
-
-        // Results sections
-        this.resultsSections = {
-            results: document.getElementById('results-section'),
-            sources: document.getElementById('sources-section'),
-            quotations: document.getElementById('quotations-section'),
-            proscons: document.getElementById('proscons-section')
-        };
-
-        // Content containers
-        this.containers = {
-            results: document.getElementById('results'),
-            sources: document.getElementById('sources'),
-            quotations: document.getElementById('quotations'),
-            proscons: document.getElementById('pros-list')
-        };
-
-        // UI elements
-        this.loadingSection = document.getElementById('loading-section');
-        this.errorSection = document.getElementById('error-section');
-        this.errorMessage = document.getElementById('error-message');
-        this.navTabs = document.querySelectorAll('.nav-tab');
-    }
-
-    initializeEventListeners() {
-        // Tab navigation
-        this.navTabs.forEach(tab => {
-            tab.addEventListener('click', (e) => this.switchTab(e.currentTarget));
-        });
-
-        // Form submissions
-        this.forms.article.addEventListener('submit', (e) => this.handleArticleSearch(e));
-        this.forms.source.addEventListener('submit', (e) => this.handleSourceSearch(e));
-        this.forms.quotation.addEventListener('submit', (e) => this.handleQuotationSearch(e));
-        this.forms.proscons.addEventListener('submit', (e) => this.handleProsConsSearch(e));
-
-        // Form validation
-        Object.values(this.forms).forEach(form => {
-            form.addEventListener('input', (e) => this.validateField(e.target));
-            form.addEventListener('blur', (e) => this.validateField(e.target));
-        });
-    }
-
-    // Tab navigation
-    switchTab(clickedTab) {
-        const targetId = clickedTab.dataset.target;
-        
-        // Update tab states
-        this.navTabs.forEach(tab => {
-            tab.classList.remove('active');
-            tab.setAttribute('aria-selected', 'false');
-        });
-        clickedTab.classList.add('active');
-        clickedTab.setAttribute('aria-selected', 'true');
-
-        // Update section visibility
-        Object.values(this.sections).forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Correct section mapping
-        const sectionMap = {
-            'similar-articles': 'similar',
-            'article-sources': 'sources',
-            'article-quotations': 'quotations',
-            'article-analysis': 'analysis'
-        };
-        
-        const sectionKey = sectionMap[targetId];
-        if (sectionKey && this.sections[sectionKey]) {
-            this.sections[sectionKey].classList.add('active');
-        }
-
-        this.currentSection = targetId;
-    }
-
-    // Form validation
-    validateField(field) {
-        const errorElement = document.getElementById(`${field.id}-error`);
-        const isValid = this.isFieldValid(field);
-        
-        if (errorElement) {
-            if (!isValid && field.value.trim()) {
-                errorElement.textContent = this.getFieldErrorMessage(field);
-                errorElement.classList.add('show');
-                field.classList.add('error');
-            } else {
-                errorElement.classList.remove('show');
-                field.classList.remove('error');
+document.addEventListener('DOMContentLoaded', () => {
+    // Sekme geçişi
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const sections = document.querySelectorAll('.main-section');
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            navBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            sections.forEach(sec => sec.classList.remove('active'));
+            document.getElementById(btn.dataset.section + '-section').classList.add('active');
+            // Profil sekmesi seçildiyse profili yükle
+            if (btn.dataset.section === 'profile') {
+                loadProfile();
             }
-        }
-
-        return isValid;
-    }
-
-    isFieldValid(field) {
-        if (field.hasAttribute('required') && !field.value.trim()) {
-            return false;
-        }
-        
-        if (field.type === 'email' && field.value) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(field.value);
-        }
-
-        // Text input için minimum uzunluk kontrolü
-        if (field.type === 'text' && field.value.trim().length < 3) {
-            return false;
-        }
-
-        // Textarea için minimum uzunluk kontrolü
-        if (field.tagName === 'TEXTAREA' && field.value.trim().length < 10) {
-            return false;
-        }
-
-        return true;
-    }
-
-    getFieldErrorMessage(field) {
-        if (field.hasAttribute('required') && !field.value.trim()) {
-            return 'Bu alan zorunludur.';
-        }
-        
-        if (field.type === 'email' && field.value) {
-            return 'Geçerli bir e-posta adresi girin.';
-        }
-
-        if (field.type === 'text' && field.value.trim().length < 3) {
-            return 'En az 3 karakter girmelisiniz.';
-        }
-
-        if (field.tagName === 'TEXTAREA' && field.value.trim().length < 10) {
-            return 'En az 10 karakter girmelisiniz.';
-        }
-
-        return 'Geçersiz değer.';
-    }
-
-    // Loading states
-    showLoading(button) {
-        const btnText = button.querySelector('.btn-text');
-        const btnLoading = button.querySelector('.btn-loading');
-        
-        if (btnText && btnLoading) {
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'flex';
-        }
-        
-        button.disabled = true;
-        this.loadingSection.style.display = 'block';
-    }
-
-    hideLoading(button) {
-        const btnText = button.querySelector('.btn-text');
-        const btnLoading = button.querySelector('.btn-loading');
-        
-        if (btnText && btnLoading) {
-            btnText.style.display = 'inline';
-            btnLoading.style.display = 'none';
-        }
-        
-        button.disabled = false;
-        this.loadingSection.style.display = 'none';
-    }
-
-    // Error handling
-    showError(message) {
-        console.error('Hata gösteriliyor:', message);
-        this.errorMessage.textContent = message;
-        this.errorSection.style.display = 'block';
-        this.errorSection.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    hideError() {
-        this.errorSection.style.display = 'none';
-    }
-
-    // Hide all results sections
-    hideAllResults() {
-        Object.values(this.resultsSections).forEach(section => {
-            section.style.display = 'none';
         });
-        this.hideError();
-    }
+    });
 
-    // API calls
-    async makeApiCall(endpoint, data) {
+    // PDF Analiz
+    const pdfForm = document.getElementById('pdf-form');
+    const pdfFileInput = document.getElementById('pdf-file');
+    const pdfResult = document.getElementById('pdf-result');
+    const pdfLoading = document.getElementById('pdf-loading');
+    const pdfError = document.getElementById('pdf-file-error');
+
+    pdfForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        pdfError.textContent = '';
+        pdfResult.innerHTML = '';
+        if (!pdfFileInput.files || pdfFileInput.files.length === 0) {
+            pdfError.textContent = 'Lütfen bir PDF dosyası seçin.';
+            return;
+        }
+        const file = pdfFileInput.files[0];
+        if (file.type !== 'application/pdf') {
+            pdfError.textContent = 'Yalnızca PDF dosyası yükleyebilirsiniz.';
+            return;
+        }
+        pdfLoading.style.display = 'block';
         try {
-            const response = await fetch(endpoint, {
+            const formData = new FormData();
+            formData.append('file', file);
+            const resp = await fetch('/api/v1/articles/analyze-article', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
+                body: formData
             });
+            if (!resp.ok) throw new Error(await resp.text());
+            const result = await resp.json();
+            pdfResult.innerHTML = renderPdfResult(result);
+        } catch (err) {
+            pdfResult.innerHTML = `<div class='error-message'>${err.message || 'Analiz sırasında hata oluştu.'}</div>`;
+        } finally {
+            pdfLoading.style.display = 'none';
+        }
+    });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-                
-                try {
-                    const errorData = JSON.parse(errorText);
-                    if (errorData.message) {
-                        errorMessage = errorData.message;
-                    }
-                } catch (e) {
-                    // If response is not JSON, use the text as is
-                    if (errorText) {
-                        errorMessage = errorText;
-                    }
-                }
-                
-                throw new Error(errorMessage);
+    // Atıflar (Citations)
+    const citationsForm = document.getElementById('citations-form');
+    const citationsInput = document.getElementById('citations-paper-id');
+    const citationsResult = document.getElementById('citations-result');
+    const citationsLoading = document.getElementById('citations-loading');
+    const citationsError = document.getElementById('citations-paper-id-error');
+
+    citationsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        citationsError.textContent = '';
+        citationsResult.innerHTML = '';
+        const paperId = citationsInput.value.trim();
+        if (!paperId) {
+            citationsError.textContent = 'Makale kimliği zorunludur.';
+            return;
+        }
+        citationsLoading.style.display = 'block';
+        try {
+            const url = `https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(paperId)}/citations?fields=title,authors,year,openAccessPdf`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (!resp.ok || data.error) throw new Error(data.error || 'API Hatası');
+            if (!data.data || data.data.length === 0) {
+                citationsResult.innerHTML = '<div class="error-message">Bu makaleye yapılan atıf bulunamadı.</div>';
+                return;
             }
+            citationsResult.innerHTML = data.data.map(cit => renderCitation(cit.citingPaper)).join('');
+        } catch (err) {
+            citationsResult.innerHTML = `<div class='error-message'>${err.message || 'Atıflar alınırken hata oluştu.'}</div>`;
+        } finally {
+            citationsLoading.style.display = 'none';
+        }
+    });
 
-            const result = await response.json();
-            return result;
-        } catch (error) {
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                throw new Error('Sunucuya bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin.');
+    // PDF analiz sonucu render fonksiyonu
+    function renderPdfResult(result) {
+        if (!result) return '<div class="error-message">Analiz sonucu alınamadı.</div>';
+        let html = `<div class='pdf-result-card'>`;
+        if (result.title) html += `<div class='pdf-result-field'><span class='pdf-result-title'>📄 Makale Başlığı</span><div>${escapeHtml(result.title)}</div></div>`;
+        if (result.authors && result.authors.length > 0) html += `<div class='pdf-result-field'><span class='pdf-result-title'>👤 Yazarlar</span><div>${result.authors.map(escapeHtml).join(', ')}</div></div>`;
+        if (result.institutions && result.institutions.length > 0) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🏢 Kurumlar</span><div>${result.institutions.map(escapeHtml).join(', ')}</div></div>`;
+        if (result.emails && result.emails.length > 0) html += `<div class='pdf-result-field'><span class='pdf-result-title'>✉️ E-posta</span><div>${result.emails.map(escapeHtml).join(', ')}</div></div>`;
+        if (result.journalName) html += `<div class='pdf-result-field'><span class='pdf-result-title'>📚 Dergi</span><div>${escapeHtml(result.journalName)}</div></div>`;
+        if (result.publicationDate) html += `<div class='pdf-result-field'><span class='pdf-result-title'>📅 Yayın Tarihi</span><div>${escapeHtml(result.publicationDate)}</div></div>`;
+        if (result.doi) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🔗 DOI</span><div>${escapeHtml(result.doi)}</div></div>`;
+        if (result.keywords && result.keywords.length > 0) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🏷️ Anahtar Kelimeler</span><div>${result.keywords.map(k=>`<span class='pdf-keyword'>${escapeHtml(k)}</span>`).join(' ')}</div></div>`;
+        if (result.summary) html += `<div class='pdf-result-field'><span class='pdf-result-title'>📝 Makale Özeti</span><div>${escapeHtml(result.summary)}</div></div>`;
+        if (result.sections && Object.keys(result.sections).length > 0) {
+            html += `<div class='pdf-result-field'><span class='pdf-result-title'>📑 Bölümler</span><ul class='pdf-section-list'>`;
+            for (const [section, content] of Object.entries(result.sections)) {
+                html += `<li><strong>${escapeHtml(section)}:</strong> ${escapeHtml(content)}</li>`;
             }
-            throw error;
+            html += `</ul></div>`;
         }
+        if (result.strengths) html += `<div class='pdf-result-field'><span class='pdf-result-title'>💪 Güçlü Yönler</span><div>${escapeHtml(result.strengths)}</div></div>`;
+        if (result.weaknesses) html += `<div class='pdf-result-field'><span class='pdf-result-title'>⚠️ Zayıf Yönler</span><div>${escapeHtml(result.weaknesses)}</div></div>`;
+        if (result.contribution) html += `<div class='pdf-result-field'><span class='pdf-result-title'>✨ Katkı</span><div>${escapeHtml(result.contribution)}</div></div>`;
+        if (result.missingPoints) html += `<div class='pdf-result-field'><span class='pdf-result-title'>❓ Eksik Noktalar</span><div>${escapeHtml(result.missingPoints)}</div></div>`;
+        if (result.methodology) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🔬 Metodoloji</span><div>${escapeHtml(result.methodology)}</div></div>`;
+        if (result.researchQuestion) html += `<div class='pdf-result-field'><span class='pdf-result-title'>❔ Araştırma Sorusu</span><div>${escapeHtml(result.researchQuestion)}</div></div>`;
+        if (result.mainFindings) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🔎 Temel Bulgular</span><div>${escapeHtml(result.mainFindings)}</div></div>`;
+        if (result.discussionSummary) html += `<div class='pdf-result-field'><span class='pdf-result-title'>💬 Tartışma Özeti</span><div>${escapeHtml(result.discussionSummary)}</div></div>`;
+        if (result.mostCitedSources && result.mostCitedSources.length > 0) {
+            html += `<div class='pdf-result-field'><span class='pdf-result-title'>📖 En Çok Atıf Yapılan Kaynaklar</span><ol class='pdf-source-list'>`;
+            result.mostCitedSources.forEach(src => {
+                html += `<li>${escapeHtml(src)}</li>`;
+            });
+            html += `</ol></div>`;
+        }
+        if (typeof result.totalSourcesCount === 'number') html += `<div class='pdf-result-field'><span class='pdf-result-title'>🔢 Toplam Kaynak Sayısı</span><div>${result.totalSourcesCount}</div></div>`;
+        if (result.sourceDiversityAndRecency) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🌐 Kaynak Çeşitliliği ve Güncelliği</span><div>${escapeHtml(result.sourceDiversityAndRecency)}</div></div>`;
+        if (result.writingQuality) html += `<div class='pdf-result-field'><span class='pdf-result-title'>✍️ Yazım Kalitesi</span><div>${escapeHtml(result.writingQuality)}</div></div>`;
+        if (result.fluencyAndClarity) html += `<div class='pdf-result-field'><span class='pdf-result-title'>💡 Akıcılık ve Anlaşılırlık</span><div>${escapeHtml(result.fluencyAndClarity)}</div></div>`;
+        if (result.scientificTerminologySuitability) html += `<div class='pdf-result-field'><span class='pdf-result-title'>🔬 Bilimsel Terminoloji Uygunluğu</span><div>${escapeHtml(result.scientificTerminologySuitability)}</div></div>`;
+        html += `</div>`;
+        return html;
     }
 
-    // Form handlers
-    async handleArticleSearch(e) {
-        e.preventDefault();
-        
-        const form = e.target;
-        const button = form.querySelector('button[type="submit"]');
-        
-        // Validate form
-        const fields = form.querySelectorAll('input, textarea');
-        let isValid = true;
-        
-        fields.forEach(field => {
-            if (!this.validateField(field)) {
-                isValid = false;
+    // Citation kartı render
+    function renderCitation(citing) {
+        if (!citing) return '';
+        let html = `<div class='citation-card'>`;
+        html += `<div class='citation-title'>${escapeHtml(citing.title || 'Başlık yok')}</div>`;
+        if (citing.authors && citing.authors.length > 0) html += `<div class='citation-meta'>Yazarlar: ${citing.authors.map(a => escapeHtml(a.name)).join(', ')}</div>`;
+        if (citing.year) html += `<div class='citation-meta'>Yıl: ${escapeHtml(citing.year)}</div>`;
+        if (citing.openAccessPdf && citing.openAccessPdf.url) html += `<a class='citation-link' href='${citing.openAccessPdf.url}' target='_blank'>PDF</a>`;
+        html += `</div>`;
+        return html;
+    }
+
+    // Profil yükleme fonksiyonu
+    async function loadProfile() {
+        const loading = document.getElementById('profile-loading');
+        const result = document.getElementById('profile-result');
+        loading.style.display = 'block';
+        result.innerHTML = '';
+        try {
+            const resp = await fetch('/api/v1/users/profile');
+            if (resp.status === 401) {
+                window.location.href = '/login.html';
+                return;
             }
-        });
-
-        if (!isValid) {
-            this.showError('Lütfen tüm zorunlu alanları doldurun.');
-            return;
-        }
-
-        this.showLoading(button);
-        this.hideAllResults();
-
-        try {
-            const formData = new FormData(form);
-            const data = {
-                title: formData.get('title').trim(),
-                articleAbstract: formData.get('abstract').trim()
-            };
-
-            const articles = await this.makeApiCall('/api/v1/articles', data);
-            this.displayArticles(articles, this.containers.results, 'results-count');
-            this.resultsSections.results.style.display = 'block';
-            
-        } catch (error) {
-            this.showError(`Arama sırasında hata oluştu: ${error.message}`);
+            if (!resp.ok) throw new Error(await resp.text());
+            const user = await resp.json();
+            result.innerHTML = renderProfile(user);
+        } catch (err) {
+            result.innerHTML = `<div class='error-message'>${err.message || 'Profil alınırken hata oluştu.'}</div>`;
         } finally {
-            this.hideLoading(button);
+            loading.style.display = 'none';
         }
     }
 
-    async handleSourceSearch(e) {
-        e.preventDefault();
-        
-        const form = e.target;
-        const button = form.querySelector('button[type="submit"]');
-        
-        if (!this.validateField(form.querySelector('#source-title'))) {
-            this.showError('Lütfen makale başlığını girin.');
-            return;
-        }
-
-        this.showLoading(button);
-        this.hideAllResults();
-
-        try {
-            const formData = new FormData(form);
-            const data = {
-                title: formData.get('source-title').trim(),
-                sourceFormat: formData.get('source-format')
-            };
-
-            const sources = await this.makeApiCall('/api/v1/articles/sources', data);
-            this.displaySources(sources);
-            this.resultsSections.sources.style.display = 'block';
-            
-        } catch (error) {
-            this.showError(`Kaynak arama sırasında hata oluştu: ${error.message}`);
-        } finally {
-            this.hideLoading(button);
-        }
+    function renderProfile(user) {
+        let html = `<div class='profile-card'>`;
+        if (user.picture) html += `<img class='profile-avatar' src='${escapeHtml(user.picture)}' alt='Profil Fotoğrafı'>`;
+        html += `<div class='profile-name'>${escapeHtml(user.firstName || '')} ${escapeHtml(user.lastName || '')}</div>`;
+        html += `<div class='profile-email'>${escapeHtml(user.email || '')}</div>`;
+        html += `</div>`;
+        return html;
     }
 
-    async handleQuotationSearch(e) {
-        e.preventDefault();
-        
-        const form = e.target;
-        const button = form.querySelector('button[type="submit"]');
-        
-        if (!this.validateField(form.querySelector('#quotation-title'))) {
-            this.showError('Lütfen makale başlığını girin.');
-            return;
-        }
-
-        this.showLoading(button);
-        this.hideAllResults();
-
-        try {
-            const formData = new FormData(form);
-            const data = {
-                articleTitle: formData.get('quotation-title').trim()
-            };
-
-            const quotations = await this.makeApiCall('/api/v1/articles/quotations', data);
-            this.displayArticles(quotations, this.containers.quotations, 'quotations-count');
-            this.resultsSections.quotations.style.display = 'block';
-            
-        } catch (error) {
-            this.showError(`Atıf arama sırasında hata oluştu: ${error.message}`);
-        } finally {
-            this.hideLoading(button);
-        }
-    }
-
-    async handleProsConsSearch(e) {
-        e.preventDefault();
-        
-        const form = e.target;
-        const button = form.querySelector('button[type="submit"]');
-        
-        if (!this.validateField(form.querySelector('#proscons-title'))) {
-            this.showError('Lütfen makale başlığını girin.');
-            return;
-        }
-
-        this.showLoading(button);
-        this.hideAllResults();
-
-        try {
-            const formData = new FormData(form);
-            const data = {
-                title: formData.get('proscons-title').trim()
-            };
-
-            const result = await this.makeApiCall('/api/v1/articles/abstract', data);
-            this.displayProsCons(result);
-            this.resultsSections.proscons.style.display = 'block';
-            
-        } catch (error) {
-            this.showError(`Analiz sırasında hata oluştu: ${error.message}`);
-        } finally {
-            this.hideLoading(button);
-        }
-    }
-
-    // Display methods
-    displayArticles(articles, container, countElementId) {
-        container.innerHTML = '';
-        
-        if (!articles || articles.length === 0) {
-            container.innerHTML = '<p class="no-results">Sonuç bulunamadı.</p>';
-            return;
-        }
-
-        const countElement = document.getElementById(countElementId);
-        if (countElement) {
-            countElement.textContent = `${articles.length} sonuç`;
-        }
-
-        articles.forEach(article => {
-            const card = document.createElement('div');
-            card.className = 'article-card';
-            card.innerHTML = `
-                <h3>${this.escapeHtml(article.articleName)}</h3>
-                <p><strong>Yazar:</strong> ${this.escapeHtml(article.authorName)}</p>
-                <p><strong>Yıl:</strong> ${this.escapeHtml(article.year)}</p>
-                ${article.publishingPlace ? `<p><strong>Yayın Yeri:</strong> ${this.escapeHtml(article.publishingPlace)}</p>` : ''}
-                ${this.currentSection === 'similar-articles' ? 
-                    `<button class="btn-secondary" onclick="showSources('${this.escapeHtml(article.articleName)}')">Kaynakları Göster</button>` : 
-                    ''}
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    displaySources(sources) {
-        this.containers.sources.innerHTML = '';
-        
-        if (!sources || sources.length === 0) {
-            this.containers.sources.innerHTML = '<p class="no-results">Bu makale için kaynak bulunamadı.</p>';
-            return;
-        }
-
-        const countElement = document.getElementById('sources-count');
-        if (countElement) {
-            countElement.textContent = `${sources.length} kaynak`;
-        }
-
-        sources.forEach(source => {
-            const sourceItem = document.createElement('div');
-            sourceItem.className = 'source-item';
-            sourceItem.textContent = source.source;
-            this.containers.sources.appendChild(sourceItem);
-        });
-    }
-
-    displayProsCons(result) {
-        this.containers.proscons.innerHTML = '';
-
-        // Result kontrolü
-        if (!result) {
-            this.containers.proscons.innerHTML = '<p class="no-results">Analiz sonucu alınamadı.</p>';
-            return;
-        }
-
-        if ((!result.pros || result.pros.length === 0) && (!result.cons || result.cons.length === 0)) {
-            this.containers.proscons.innerHTML = '<p class="no-results">Bu makale için iyi veya kötü yan bulunamadı.</p>';
-            return;
-        }
-
-        let tableHtml = '<table class="proscons-table"><thead><tr><th>İyi Yanları</th><th>Kötü Yanları</th></tr></thead><tbody>';
-        
-        const maxLen = Math.max(result.pros ? result.pros.length : 0, result.cons ? result.cons.length : 0);
-        
-        for (let i = 0; i < maxLen; i++) {
-            tableHtml += '<tr>';
-            tableHtml += `<td>${result.pros && result.pros[i] ? this.escapeHtml(result.pros[i]) : ''}</td>`;
-            tableHtml += `<td>${result.cons && result.cons[i] ? this.escapeHtml(result.cons[i]) : ''}</td>`;
-            tableHtml += '</tr>';
-        }
-        
-        tableHtml += '</tbody></table>';
-        this.containers.proscons.innerHTML = tableHtml;
-    }
-
-    // Utility methods
-    escapeHtml(text) {
+    // HTML escape
+    function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-
-    // Public methods for global access
-    async showSources(articleTitle) {
-        this.hideAllResults();
-        this.loadingSection.style.display = 'block';
-
-        try {
-            const data = { title: articleTitle, sourceFormat: 'IEEE' };
-            const sources = await this.makeApiCall('/api/v1/articles/sources', data);
-            this.displaySources(sources);
-            this.resultsSections.sources.style.display = 'block';
-        } catch (error) {
-            this.showError(`Kaynak gösterme sırasında hata oluştu: ${error.message}`);
-        } finally {
-            this.loadingSection.style.display = 'none';
-        }
-    }
-
-    backToResults() {
-        this.resultsSections.sources.style.display = 'none';
-        this.resultsSections.results.style.display = 'block';
-    }
-}
-
-// Global functions for HTML onclick handlers
-let app;
-
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    app = new AkademikaraApp();
-});
-
-// Global functions for backward compatibility
-function showSources(articleTitle) {
-    if (app) {
-        app.showSources(articleTitle);
-    }
-}
-
-function backToResults() {
-    if (app) {
-        app.backToResults();
-    }
-}
-
-function hideError() {
-    if (app) {
-        app.hideError();
-    }
-} 
+}); 

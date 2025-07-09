@@ -3,196 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Akademik araştırmalarınız için benzer makaleleri ve literatürü kolayca keşfedin. Makale kaynakları, atıflar ve analizler.">
-    <meta name="keywords" content="akademik, makale, araştırma, literatür, kaynak, atıf">
-    <meta name="author" content="akademikara.com">
-    <meta property="og:title" content="akademikara.com - Akademik Makale Araştırma">
-    <meta property="og:description" content="Akademik araştırmalarınız için benzer makaleleri ve literatürü kolayca keşfedin.">
-    <meta property="og:type" content="website">
-    <title>akademikara.com - Akademik Makale Araştırma</title>
+    <title>Akademikara - Akademik PDF Analiz & Atıf Bulucu</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header role="banner">
-        <div class="container">
-            <h1>akademikara.com</h1>
-            <p>Akademik araştırmalarınız için benzer makaleleri ve literatürü kolayca keşfedin.</p>
-        </div>
-    </header>
-    
-    <main role="main" class="container">
-        <nav class="feature-nav" role="navigation" aria-label="Ana özellikler">
-            <button class="nav-tab active" data-target="similar-articles" aria-selected="true">
-                <span class="icon">🔍</span>
-                Benzer Makaleler
-            </button>
-            <button class="nav-tab" data-target="article-sources" aria-selected="false">
-                <span class="icon">📚</span>
-                Makale Kaynakları
-            </button>
-            <button class="nav-tab" data-target="article-quotations" aria-selected="false">
-                <span class="icon">📖</span>
-                Atıf Yapılanlar
-            </button>
-            <button class="nav-tab" data-target="article-analysis" aria-selected="false">
-                <span class="icon">📊</span>
-                İyi/Kötü Yanlar
-            </button>
+    <header class="main-header">
+        <h1>Akademikara</h1>
+        <nav class="main-nav">
+            <button class="nav-btn active" data-section="pdf-analysis">PDF Analiz</button>
+            <button class="nav-btn" data-section="citations">Atıflar</button>
+            <button class="nav-btn" data-section="profile">Profilim</button>
         </nav>
-
-        <section id="similar-articles" class="search-section active" role="region" aria-labelledby="similar-articles-title">
-            <h2 id="similar-articles-title">Benzer Makaleler Araştır</h2>
-            <form id="article-form" novalidate>
-                <div class="form-group">
-                    <label for="title">Makale Başlığı *</label>
-                    <input type="text" id="title" name="title" required 
-                           placeholder="Makale başlığını girin..."
-                           aria-describedby="title-error">
-                    <div id="title-error" class="error-message" role="alert" aria-live="polite"></div>
-                </div>
-                <div class="form-group">
-                    <label for="abstract">Makale Özeti *</label>
-                    <textarea id="abstract" name="abstract" rows="4" required 
-                              placeholder="Makale özetini girin..."
-                              aria-describedby="abstract-error"></textarea>
-                    <div id="abstract-error" class="error-message" role="alert" aria-live="polite"></div>
-                </div>
-                <button type="submit" class="btn-primary">
-                    <span class="btn-text">Araştır</span>
-                    <span class="btn-loading" style="display: none;">
-                        <div class="spinner"></div>
-                    </span>
-                </button>
+    </header>
+    <main>
+        <!-- PDF Analiz Bölümü -->
+        <section id="pdf-analysis-section" class="main-section active" aria-labelledby="pdf-analysis-title">
+            <h2 id="pdf-analysis-title">PDF'ten Makale Analizi</h2>
+            <form id="pdf-form" enctype="multipart/form-data" autocomplete="off">
+                <label for="pdf-file">PDF Dosyası Yükle</label>
+                <input type="file" id="pdf-file" name="pdf-file" accept="application/pdf" required>
+                <button type="submit" class="btn-primary">Analiz Et</button>
+                <div id="pdf-file-error" class="error-message"></div>
             </form>
+            <div id="pdf-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="pdf-result"></div>
         </section>
-        
-        <section id="article-sources" class="search-section" role="region" aria-labelledby="article-sources-title">
-            <h2 id="article-sources-title">Makale Kaynaklarını Araştır</h2>
-            <form id="source-form" novalidate>
-                <div class="form-group">
-                    <label for="source-title">Makale Başlığı *</label>
-                    <input type="text" id="source-title" name="source-title" required 
-                           placeholder="Makale başlığını girin..."
-                           aria-describedby="source-title-error">
-                    <div id="source-title-error" class="error-message" role="alert" aria-live="polite"></div>
-                </div>
-                <div class="form-group">
-                    <label for="source-format">Kaynak Formatı</label>
-                    <select id="source-format" name="source-format" aria-describedby="format-help">
-                        <option value="IEEE" selected>IEEE</option>
-                        <option value="APA">APA</option>
-                    </select>
-                    <div id="format-help" class="help-text">Kaynakların hangi formatta listelenmesini istediğinizi seçin</div>
-                </div>
-                <button type="submit" class="btn-primary">
-                    <span class="btn-text">Kaynakları Getir</span>
-                    <span class="btn-loading" style="display: none;">
-                        <div class="spinner"></div>
-                    </span>
-                </button>
+        <!-- Atıflar Bölümü -->
+        <section id="citations-section" class="main-section" aria-labelledby="citations-title">
+            <h2 id="citations-title">Makale Atıfları (Citations)</h2>
+            <form id="citations-form" autocomplete="off">
+                <label for="citations-paper-id">Makale Kimliği (paper_id)</label>
+                <input type="text" id="citations-paper-id" name="citations-paper-id" placeholder="DOI, Semantic Scholar ID, vb." required>
+                <button type="submit" class="btn-primary">Atıfları Getir</button>
+                <div id="citations-paper-id-error" class="error-message"></div>
             </form>
+            <div id="citations-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="citations-result"></div>
         </section>
-
-        <section id="article-quotations" class="search-section" role="region" aria-labelledby="article-quotations-title">
-            <h2 id="article-quotations-title">Makalenin Atıf Yaptığı Makaleleri Getir</h2>
-            <form id="quotation-form" novalidate>
-                <div class="form-group">
-                    <label for="quotation-title">Makale Başlığı *</label>
-                    <input type="text" id="quotation-title" name="quotation-title" required 
-                           placeholder="Makale başlığını girin..."
-                           aria-describedby="quotation-title-error">
-                    <div id="quotation-title-error" class="error-message" role="alert" aria-live="polite"></div>
-                </div>
-                <button type="submit" class="btn-primary">
-                    <span class="btn-text">Atıf Yapılanları Getir</span>
-                    <span class="btn-loading" style="display: none;">
-                        <div class="spinner"></div>
-                    </span>
-                </button>
-            </form>
+        <!-- Profilim Bölümü -->
+        <section id="profile-section" class="main-section" aria-labelledby="profile-title">
+            <h2 id="profile-title">Profilim</h2>
+            <div id="profile-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="profile-result"></div>
         </section>
-
-        <section id="article-analysis" class="search-section" role="region" aria-labelledby="article-analysis-title">
-            <h2 id="article-analysis-title">Makalenin İyi ve Kötü Yanlarını Göster</h2>
-            <form id="proscons-form" novalidate>
-                <div class="form-group">
-                    <label for="proscons-title">Makale Başlığı *</label>
-                    <input type="text" id="proscons-title" name="proscons-title" required 
-                           placeholder="Makale başlığını girin..."
-                           aria-describedby="proscons-title-error">
-                    <div id="proscons-title-error" class="error-message" role="alert" aria-live="polite"></div>
-                </div>
-                <button type="submit" class="btn-primary">
-                    <span class="btn-text">İyi/Kötü Yanları Göster</span>
-                    <span class="btn-loading" style="display: none;">
-                        <div class="spinner"></div>
-                    </span>
-                </button>
-            </form>
-        </section>
-
-        <!-- Results Sections -->
-        <section id="results-section" class="results-section" style="display:none;" role="region" aria-labelledby="results-title">
-            <div class="results-header">
-                <h2 id="results-title">Benzer Makaleler</h2>
-                <div class="results-count" id="results-count"></div>
-            </div>
-            <div id="results" class="results-grid"></div>
-        </section>
-
-        <section id="sources-section" class="results-section" style="display:none;" role="region" aria-labelledby="sources-title">
-            <div class="results-header">
-                <button class="back-button" onclick="backToResults()" aria-label="Makale listesine dön">
-                    <span class="icon">←</span>
-                    Makale Listesine Dön
-                </button>
-                <h2 id="sources-title">Makale Kaynakları</h2>
-                <div class="results-count" id="sources-count"></div>
-            </div>
-            <div id="sources" class="sources-list"></div>
-        </section>
-
-        <section id="quotations-section" class="results-section" style="display:none;" role="region" aria-labelledby="quotations-title">
-            <div class="results-header">
-                <h2 id="quotations-title">Atıf Yapılan Makaleler</h2>
-                <div class="results-count" id="quotations-count"></div>
-            </div>
-            <div id="quotations" class="results-grid"></div>
-        </section>
-
-        <section id="proscons-section" class="results-section" style="display:none;" role="region" aria-labelledby="proscons-title">
-            <div class="results-header">
-                <h2 id="proscons-title">Makalenin İyi ve Kötü Yanları</h2>
-            </div>
-            <div id="pros-list"></div>
-        </section>
-
-        <!-- Loading and Error States -->
-        <section id="loading-section" class="loading-section" style="display:none;" role="status" aria-live="polite">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <p>Yükleniyor...</p>
-            </div>
-        </section>
-
-        <section id="error-section" class="error-section" style="display:none;" role="alert" aria-live="assertive">
-            <div class="error-content">
-                <div class="error-icon">⚠️</div>
-                <p id="error-message"></p>
-                <button class="btn-secondary" onclick="hideError()">Tamam</button>
-            </div>
-        </section>
+        <!-- Hata ve Bildirim Alanı -->
+        <div id="global-error" class="global-error" style="display:none;"></div>
+        <div id="global-toast" class="global-toast" style="display:none;"></div>
     </main>
-
-    <footer role="contentinfo">
-        <div class="container">
-            <p>&copy; 2024 akademikara.com - Akademik araştırma asistanınız</p>
-        </div>
+    <footer class="main-footer">
+        <p>&copy; 2024 Akademikara - Akademik PDF Analiz & Atıf Bulucu</p>
     </footer>
-
     <script src="main.js"></script>
 </body>
 </html> 
