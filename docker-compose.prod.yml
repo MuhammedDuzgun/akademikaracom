@@ -7,6 +7,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: db_akademikaracom
+    volumes:
+      - akademikaracom-db-data:/var/lib/mysql
     networks:
       akademikaracom-network:
 
@@ -29,6 +31,9 @@ services:
     networks:
       akademikaracom-network:
     restart: on-failure
+
+volumes:
+  akademikaracom-db-data:
 
 networks:
   akademikaracom-network:
