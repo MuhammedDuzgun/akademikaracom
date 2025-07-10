@@ -1,6 +1,8 @@
 package com.yapai.akademikaracom.service.ai;
 
+import com.yapai.akademikaracom.request.GetKeywordsRequest;
 import com.yapai.akademikaracom.response.ArticleAnalyze;
+import com.yapai.akademikaracom.response.KeywordsResponse;
 import com.yapai.akademikaracom.utils.Prompts;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -29,6 +31,16 @@ public class ArticleAIService {
                 .build()
                 .prompt()
                 .user(u-> u.text("makale : " + pdfArticle))
+                .call()
+                .entity(new ParameterizedTypeReference<>() {});
+    }
+
+    public KeywordsResponse getKeywordsFromAbstract(GetKeywordsRequest request) {
+        return clientBuilder
+                .defaultSystem(Prompts.KEY_WORD_FOUNDER)
+                .build()
+                .prompt()
+                .user(u-> u.text("makale özeti : " + request.content()))
                 .call()
                 .entity(new ParameterizedTypeReference<>() {});
     }

@@ -43,4 +43,8 @@ public class Prompts {
                 - Bulamadığın bilgileri açıkça belirt ("Metinde bulunamadı" gibi).
                 - Tüm sonuçları açık ve düzenli bir şekilde Türkçe dilinde yaz !
             """;
+
+    public static final String KEY_WORD_FOUNDER = """
+           Kullancıdan gelen makale özetinden yola çıkarak 5 anahtar kelime üreten bir asistansın.
+            """;
 }

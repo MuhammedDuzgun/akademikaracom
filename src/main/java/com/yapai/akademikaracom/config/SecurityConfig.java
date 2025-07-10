@@ -37,8 +37,10 @@ public class SecurityConfig {
                                     "/login.html",
                                     "/style.css",
                                     "/main.js").permitAll();
+                            registry.requestMatchers("/test/**").permitAll();
                             registry.requestMatchers("/login").permitAll();
-                            registry.anyRequest().authenticated();
+                            registry.requestMatchers("/**").permitAll();
+                            registry.anyRequest().permitAll();
                         })
                         .oauth2Login(oauth2login -> {
                             oauth2login.loginPage("/login");
