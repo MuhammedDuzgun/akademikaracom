@@ -12,7 +12,7 @@
         <h1>Akademikara</h1>
         <nav class="main-nav">
             <button class="nav-btn active" data-section="pdf-analysis">PDF Analiz</button>
-            <button class="nav-btn" data-section="citations">Atıflar</button>
+            <button class="nav-btn" data-section="keywords">Litratür Araştır</button>
             <button class="nav-btn" data-section="profile">Profilim</button>
         </nav>
     </header>
@@ -29,17 +29,18 @@
             <div id="pdf-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="pdf-result"></div>
         </section>
-        <!-- Atıflar Bölümü -->
-        <section id="citations-section" class="main-section" aria-labelledby="citations-title">
-            <h2 id="citations-title">Makale Atıfları (Citations)</h2>
-            <form id="citations-form" autocomplete="off">
-                <label for="citations-paper-id">Makale Kimliği (paper_id)</label>
-                <input type="text" id="citations-paper-id" name="citations-paper-id" placeholder="DOI, Semantic Scholar ID, vb." required>
-                <button type="submit" class="btn-primary">Atıfları Getir</button>
-                <div id="citations-paper-id-error" class="error-message"></div>
+        <!-- Anahtar Kelimeden Makale Bul Bölümü -->
+        <section id="keywords-section" class="main-section" aria-labelledby="keywords-title">
+            <h2 id="keywords-title">Litratür Araştır</h2>
+            <form id="keywords-form" autocomplete="off">
+                <label for="keywords-abstract">Makale Özeti</label>
+                <textarea id="keywords-abstract" name="keywords-abstract" rows="5" required placeholder="Makale özetini buraya girin..."></textarea>
+                <button type="submit" class="btn-primary">Litratür Araştır</button>
+                <div id="keywords-abstract-error" class="error-message"></div>
             </form>
-            <div id="citations-loading" class="loading" style="display:none;">Yükleniyor...</div>
-            <div id="citations-result"></div>
+            <div id="keywords-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="keywords-result"></div>
+            <div id="openalex-result"></div>
         </section>
         <!-- Profilim Bölümü -->
         <section id="profile-section" class="main-section" aria-labelledby="profile-title">

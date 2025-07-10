@@ -4,18 +4,36 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sekme geçişi
     const navBtns = document.querySelectorAll('.nav-btn');
     const sections = document.querySelectorAll('.main-section');
-    navBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            navBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            sections.forEach(sec => sec.classList.remove('active'));
-            document.getElementById(btn.dataset.section + '-section').classList.add('active');
-            // Profil sekmesi seçildiyse profili yükle
-            if (btn.dataset.section === 'profile') {
-                loadProfile();
+
+    function activateSection(sectionName) {
+        navBtns.forEach(b => {
+            if (b.dataset.section === sectionName) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
             }
         });
+        sections.forEach(sec => {
+            if (sec.id === sectionName + '-section') {
+                sec.classList.add('active');
+            } else {
+                sec.classList.remove('active');
+            }
+        });
+        // Profil sekmesi seçildiyse profili yükle
+        if (sectionName === 'profile') {
+            loadProfile();
+        }
+    }
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            activateSection(btn.dataset.section);
+        });
     });
+
+    // İlk açılışta PDF Analiz sekmesini aktif yap
+    activateSection('pdf-analysis');
 
     // PDF Analiz
     const pdfForm = document.getElementById('pdf-form');
@@ -55,39 +73,122 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Atıflar (Citations)
-    const citationsForm = document.getElementById('citations-form');
-    const citationsInput = document.getElementById('citations-paper-id');
-    const citationsResult = document.getElementById('citations-result');
-    const citationsLoading = document.getElementById('citations-loading');
-    const citationsError = document.getElementById('citations-paper-id-error');
+    // Özetten Anahtar Kelime
+    const keywordsForm = document.getElementById('keywords-form');
+    const keywordsInput = document.getElementById('keywords-abstract');
+    const keywordsResult = document.getElementById('keywords-result');
+    const keywordsLoading = document.getElementById('keywords-loading');
+    const keywordsError = document.getElementById('keywords-abstract-error');
 
-    citationsForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        citationsError.textContent = '';
-        citationsResult.innerHTML = '';
-        const paperId = citationsInput.value.trim();
-        if (!paperId) {
-            citationsError.textContent = 'Makale kimliği zorunludur.';
-            return;
-        }
-        citationsLoading.style.display = 'block';
-        try {
-            const url = `https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(paperId)}/citations?fields=title,authors,year,openAccessPdf`;
-            const resp = await fetch(url);
-            const data = await resp.json();
-            if (!resp.ok || data.error) throw new Error(data.error || 'API Hatası');
-            if (!data.data || data.data.length === 0) {
-                citationsResult.innerHTML = '<div class="error-message">Bu makaleye yapılan atıf bulunamadı.</div>';
+    if (keywordsForm) {
+        keywordsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            keywordsError.textContent = '';
+            keywordsResult.innerHTML = '';
+            document.getElementById('openalex-result').innerHTML = '';
+            const content = keywordsInput.value.trim();
+            if (!content) {
+                keywordsError.textContent = 'Makale özeti zorunludur.';
                 return;
             }
-            citationsResult.innerHTML = data.data.map(cit => renderCitation(cit.citingPaper)).join('');
+            keywordsLoading.style.display = 'block';
+            try {
+                const resp = await fetch('/api/v1/articles/keywords', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                const result = await resp.json();
+                keywordsResult.innerHTML = renderKeywordsResult(result);
+                if (result.keywords && result.keywords.length > 0) {
+                    await handleKeywordsAndPapers(result.keywords);
+                }
+            } catch (err) {
+                keywordsResult.innerHTML = `<div class='error-message'>${err.message || 'Anahtar kelimeler alınırken hata oluştu.'}</div>`;
+                document.getElementById('openalex-result').innerHTML = '';
+            } finally {
+                keywordsLoading.style.display = 'none';
+            }
+        });
+    }
+
+    async function fetchOpenAlexPapers(keyword) {
+        const url = `https://api.openalex.org/works?filter=title_and_abstract.search:${encodeURIComponent(keyword)}&sort=cited_by_count:desc&per-page=5&select=id,title,authorships,publication_year,doi,cited_by_count,primary_location,abstract_inverted_index`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('OpenAlex API hatası');
+        const data = await resp.json();
+        return data.results;
+    }
+
+    async function fetchAllKeywordsPapers(keywords) {
+        const results = await Promise.all(keywords.map(fetchOpenAlexPapers));
+        return keywords.map((keyword, i) => ({
+            keyword,
+            papers: results[i]
+        }));
+    }
+
+    async function handleKeywordsAndPapers(keywords) {
+        const openalexResult = document.getElementById('openalex-result');
+        openalexResult.innerHTML = '<div class="loading">OpenAlex makaleleri yükleniyor...</div>';
+        try {
+            const papersByKeyword = await fetchAllKeywordsPapers(keywords);
+            openalexResult.innerHTML = renderOpenAlexResults(papersByKeyword);
         } catch (err) {
-            citationsResult.innerHTML = `<div class='error-message'>${err.message || 'Atıflar alınırken hata oluştu.'}</div>`;
-        } finally {
-            citationsLoading.style.display = 'none';
+            openalexResult.innerHTML = `<div class='error-message'>OpenAlex makaleleri alınırken hata oluştu: ${err.message}</div>`;
         }
-    });
+    }
+
+    function renderOpenAlexResults(papersByKeyword) {
+        return papersByKeyword.map(group => `
+            <div class="keyword-group">
+                <h3>🔑 ${escapeHtml(group.keyword)}</h3>
+                <div class="papers-list">
+                    ${group.papers.map(renderOpenAlexPaper).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderOpenAlexPaper(paper) {
+        const authors = (paper.authorships || []).map(a => escapeHtml(a.author.display_name)).join(', ');
+        const venue = paper.primary_location && paper.primary_location.source
+            ? escapeHtml(paper.primary_location.source.display_name)
+            : '';
+        const pdf = paper.primary_location && paper.primary_location.pdf_url
+            ? `<a href="${paper.primary_location.pdf_url}" target="_blank" title="PDF"><span style='font-size:1.1em;'>📄</span> PDF</a>` : '';
+        const doi = paper.doi ? `<a href="${paper.doi}" target="_blank" title="DOI"><span style='font-size:1.1em;'>🔗</span> DOI</a>` : '';
+        const year = paper.publication_year ? `<span title='Yayın Yılı'>📅 ${paper.publication_year}</span>` : '';
+        const cited = typeof paper.cited_by_count === 'number' ? `<span title='Atıf Sayısı'>⭐ ${paper.cited_by_count}</span>` : '';
+        const abs = paper.abstract_inverted_index
+            ? `<div class="paper-abstract">${escapeHtml(abstractFromInvertedIndex(paper.abstract_inverted_index))}</div>`
+            : '';
+        return `
+            <div class="paper-card">
+                <div class="paper-title">${escapeHtml(paper.title)}</div>
+                <div class="paper-meta">
+                    ${authors ? `<span>👤 ${authors}</span>` : ''}
+                    ${venue ? `<span>📚 ${venue}</span>` : ''}
+                    ${year}
+                    ${cited}
+                    ${doi}
+                    ${pdf}
+                </div>
+                ${abs}
+            </div>
+        `;
+    }
+
+    // OpenAlex abstract_inverted_index'i düz metne çeviren yardımcı fonksiyon
+    function abstractFromInvertedIndex(index) {
+        if (!index) return '';
+        const words = [];
+        Object.entries(index).forEach(([word, positions]) => {
+            positions.forEach(pos => words[pos] = word);
+        });
+        return words.join(' ');
+    }
 
     // PDF analiz sonucu render fonksiyonu
     function renderPdfResult(result) {
@@ -133,16 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // Citation kartı render
-    function renderCitation(citing) {
-        if (!citing) return '';
-        let html = `<div class='citation-card'>`;
-        html += `<div class='citation-title'>${escapeHtml(citing.title || 'Başlık yok')}</div>`;
-        if (citing.authors && citing.authors.length > 0) html += `<div class='citation-meta'>Yazarlar: ${citing.authors.map(a => escapeHtml(a.name)).join(', ')}</div>`;
-        if (citing.year) html += `<div class='citation-meta'>Yıl: ${escapeHtml(citing.year)}</div>`;
-        if (citing.openAccessPdf && citing.openAccessPdf.url) html += `<a class='citation-link' href='${citing.openAccessPdf.url}' target='_blank'>PDF</a>`;
-        html += `</div>`;
-        return html;
+    function renderKeywordsResult(result) {
+        if (!result || !result.keywords || result.keywords.length === 0) {
+            return '<div class="error-message">Anahtar kelime bulunamadı.</div>';
+        }
+        return `<div class='pdf-result-field'><span class='pdf-result-title'>🏷️ Anahtar Kelimeler</span><div>${result.keywords.map(k=>`<span class='pdf-keyword'>${escapeHtml(k)}</span>`).join(' ')}</div></div>`;
     }
 
     // Profil yükleme fonksiyonu
