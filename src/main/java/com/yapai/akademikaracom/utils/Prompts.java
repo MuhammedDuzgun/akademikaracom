@@ -46,5 +46,9 @@ public class Prompts {
 
     public static final String KEY_WORD_FOUNDER = """
            Kullancıdan gelen makale özetinden yola çıkarak 5 anahtar kelime üreten bir asistansın.
+           Bu anahtar kelimeleri belirlerken dikkat etmen kurallar şunlar:
+           * Bu anahtar kelimeler literatür taramak için kullanılacak, bu nedenle bu anahtar 
+           kelimeleri belirlerken daha sonra bu anahtar kelimelerin literatür taramak için kullanılacağının
+           farkında olarak belirle. 
             """;
 }

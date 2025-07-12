@@ -3,23 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akademikara - Akademik PDF Analiz & Atıf Bulucu</title>
+    <title>akademikara - Akademik Araştırma Asistanı</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header class="main-header">
-        <h1>Akademikara</h1>
-        <nav class="main-nav">
-            <button class="nav-btn active" data-section="pdf-analysis">PDF Analiz</button>
-            <button class="nav-btn" data-section="keywords">Litratür Araştır</button>
-            <button class="nav-btn" data-section="profile">Profilim</button>
-        </nav>
+        <div class="navbar-container">
+            <div class="navbar-logo">akademikara</div>
+            <nav class="main-nav">
+                <button class="nav-btn active" data-section="pdf-analysis">Makale Analizi</button>
+                <button class="nav-btn" data-section="keywords">Litratür Araştır</button>
+                <button class="nav-btn" data-section="author-search">Yazar Ara</button>
+                <button class="nav-btn" data-section="institution-search">Kurum Ara</button>
+                <button class="nav-btn" data-section="profile">Profilim</button>
+            </nav>
+        </div>
     </header>
     <main>
         <!-- PDF Analiz Bölümü -->
         <section id="pdf-analysis-section" class="main-section active" aria-labelledby="pdf-analysis-title">
-            <h2 id="pdf-analysis-title">PDF'ten Makale Analizi</h2>
+            <h2 id="pdf-analysis-title">Makale Analizi</h2>
+            <div class="section-desc">PDF formatındaki makaleleri yapay zeka yardımı ile detaylı analiz edin.</div>
             <form id="pdf-form" enctype="multipart/form-data" autocomplete="off">
                 <label for="pdf-file">PDF Dosyası Yükle</label>
                 <input type="file" id="pdf-file" name="pdf-file" accept="application/pdf" required>
@@ -32,6 +37,7 @@
         <!-- Anahtar Kelimeden Makale Bul Bölümü -->
         <section id="keywords-section" class="main-section" aria-labelledby="keywords-title">
             <h2 id="keywords-title">Litratür Araştır</h2>
+            <div class="section-desc">Makale özetini ekleyin ve bu özetten yola çıkarak sizlere önemli çalışmalar listelensin.</div>
             <form id="keywords-form" autocomplete="off">
                 <label for="keywords-abstract">Makale Özeti</label>
                 <textarea id="keywords-abstract" name="keywords-abstract" rows="5" required placeholder="Makale özetini buraya girin..."></textarea>
@@ -42,18 +48,42 @@
             <div id="keywords-result"></div>
             <div id="openalex-result"></div>
         </section>
+        <!-- Yazar Ara Bölümü -->
+        <section id="author-search-section" class="main-section" aria-labelledby="author-search-title">
+            <h2 id="author-search-title">Yazar Ara</h2>
+            <div class="section-desc">OpenAlex veritabanında yazarları arayın ve akademik profillerini inceleyin.</div>
+            <form id="author-search-form" autocomplete="off">
+                <label for="author-search-input">Yazar Adı</label>
+                <input type="text" id="author-search-input" name="author-search-input" required placeholder="Yazar adı girin...">
+                <button type="submit" class="btn-primary">Ara</button>
+                <div id="author-search-error" class="error-message"></div>
+            </form>
+            <div id="author-search-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="author-search-result"></div>
+        </section>
+        <!-- Kurum Ara Bölümü -->
+        <section id="institution-search-section" class="main-section" aria-labelledby="institution-search-title">
+            <h2 id="institution-search-title">Kurum Ara</h2>
+            <div class="section-desc">Dünyadaki akademik kurumları arayın ve istatistiklerini görüntüleyin.</div>
+            <form id="institution-search-form" autocomplete="off">
+                <label for="institution-search-input">Kurum Adı</label>
+                <input type="text" id="institution-search-input" name="institution-search-input" required placeholder="Kurum adı girin...">
+                <button type="submit" class="btn-primary">Ara</button>
+                <div id="institution-search-error" class="error-message"></div>
+            </form>
+            <div id="institution-search-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="institution-search-result"></div>
+        </section>
         <!-- Profilim Bölümü -->
         <section id="profile-section" class="main-section" aria-labelledby="profile-title">
             <h2 id="profile-title">Profilim</h2>
+            <div class="section-desc">Kullanıcı bilgilerinizi ve analiz geçmişinizi görüntüleyin.</div>
             <div id="profile-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="profile-result"></div>
         </section>
-        <!-- Hata ve Bildirim Alanı -->
-        <div id="global-error" class="global-error" style="display:none;"></div>
-        <div id="global-toast" class="global-toast" style="display:none;"></div>
     </main>
     <footer class="main-footer">
-        <p>&copy; 2024 Akademikara - Akademik PDF Analiz & Atıf Bulucu</p>
+        <p>akademikara — akademik araştırma asistanınız</p>
     </footer>
     <script src="main.js"></script>
 </body>
