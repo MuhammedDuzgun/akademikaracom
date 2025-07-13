@@ -415,6 +415,336 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
+    // Makale Ara - Arama butonu ve otomatik arama
+    const paperSearchForm = document.getElementById('paper-search-form');
+    const paperSearchInput = document.getElementById('paper-search-input');
+    const paperSearchResult = document.getElementById('paper-search-result');
+    const paperSearchLoading = document.getElementById('paper-search-loading');
+    const paperSearchError = document.getElementById('paper-search-error');
+
+    if (paperSearchForm) {
+        paperSearchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!paperSearchInput.value.trim()) return;
+            paperSearchResult.innerHTML = '';
+            if (paperSearchError) paperSearchError.textContent = '';
+            // Filtreleri topla
+            const filters = collectFilters();
+            paperSearchLoading.style.display = 'block';
+            try {
+                const openAlexUrl = buildOpenAlexUrl(paperSearchInput.value.trim(), filters);
+                const resp = await fetch(openAlexUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'akademikara-app/1.0'
+                    }
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                const data = await resp.json();
+                if (!data.results || data.results.length === 0) {
+                    paperSearchResult.innerHTML = '<div class="error-message">Makale bulunamadı.</div>';
+                } else {
+                    paperSearchResult.innerHTML = renderPaperSearchResults(data.results);
+                }
+            } catch (err) {
+                paperSearchResult.innerHTML = `<div class='error-message'>Makaleler alınırken hata oluştu: ${err.message}</div>`;
+            } finally {
+                paperSearchLoading.style.display = 'none';
+            }
+        });
+    }
+    // Otomatik arama tetikleyici
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+    const autoSearchInputs = document.querySelectorAll('.auto-search');
+    function triggerAutoSearch() {
+        if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
+            paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    }
+    const debouncedAutoSearch = debounce(triggerAutoSearch, 400);
+    autoSearchInputs.forEach(el => {
+        el.addEventListener('input', debouncedAutoSearch);
+        el.addEventListener('change', debouncedAutoSearch);
+    });
+
+    // OpenAlex URL'ini oluşturan fonksiyon
+    function buildOpenAlexUrl(query, filters) {
+        // Sonuç sayısı seçicisini al
+        const resultCountEl = document.getElementById('result-count');
+        let perPage = 10;
+        if (resultCountEl && resultCountEl.value) {
+            perPage = parseInt(resultCountEl.value, 10);
+            if (![10,20,50,100].includes(perPage)) perPage = 10;
+        }
+        let url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per_page=${perPage}`;
+        
+        // CORS proxy kullan (gerekirse)
+        const useProxy = false; // CORS sorunu olursa true yap
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        
+        if (useProxy) {
+            url = proxyUrl + url;
+        }
+        
+        // Filtreleri topla
+        const filterList = [];
+        
+        console.log('Building URL with filters:', filters);
+        
+        // Yayın yılı filtreleri
+        if (filters.fromPublicationDate) {
+            filterList.push(`from_publication_date:${filters.fromPublicationDate}`);
+            console.log('Added from_publication_date filter:', filters.fromPublicationDate);
+        }
+        if (filters.toPublicationDate) {
+            filterList.push(`to_publication_date:${filters.toPublicationDate}`);
+            console.log('Added to_publication_date filter:', filters.toPublicationDate);
+        }
+        
+        // Makale türü - OpenAlex API'de doğru değerler
+        if (filters.workType) {
+            filterList.push(`type:${filters.workType}`);
+            console.log('Added type filter:', filters.workType);
+        }
+        
+        // Dil
+        if (filters.language) {
+            filterList.push(`language:${filters.language}`);
+            console.log('Added language filter:', filters.language);
+        }
+        
+        // Açık erişim
+        if (filters.isOa !== undefined && filters.isOa !== '') {
+            filterList.push(`is_oa:${filters.isOa}`);
+            console.log('Added is_oa filter:', filters.isOa);
+        }
+        
+        // DOI durumu
+        if (filters.hasDoi !== undefined && filters.hasDoi !== '') {
+            filterList.push(`has_doi:${filters.hasDoi}`);
+            console.log('Added has_doi filter:', filters.hasDoi);
+        }
+        
+        // PMID durumu
+        if (filters.hasPmid !== undefined && filters.hasPmid !== '') {
+            filterList.push(`has_pmid:${filters.hasPmid}`);
+            console.log('Added has_pmid filter:', filters.hasPmid);
+        }
+        
+        // Referans durumu
+        if (filters.hasReferences !== undefined && filters.hasReferences !== '') {
+            filterList.push(`has_references:${filters.hasReferences}`);
+            console.log('Added has_references filter:', filters.hasReferences);
+        }
+        
+        // Özet durumu
+        if (filters.hasAbstract !== undefined && filters.hasAbstract !== '') {
+            filterList.push(`has_abstract:${filters.hasAbstract}`);
+            console.log('Added has_abstract filter:', filters.hasAbstract);
+        }
+        
+        // Geri çekilme durumu
+        if (filters.isRetracted !== undefined && filters.isRetracted !== '') {
+            filterList.push(`is_retracted:${filters.isRetracted}`);
+            console.log('Added is_retracted filter:', filters.isRetracted);
+        }
+        
+        // Paratext durumu
+        if (filters.isParatext !== undefined && filters.isParatext !== '') {
+            filterList.push(`is_paratext:${filters.isParatext}`);
+            console.log('Added is_paratext filter:', filters.isParatext);
+        }
+        
+        // Versiyon türü
+        if (filters.version) {
+            filterList.push(`version:${filters.version}`);
+            console.log('Added version filter:', filters.version);
+        }
+        
+        // Atıf sayısı aralığı
+        if (filters.citedByCountMin !== undefined && filters.citedByCountMin !== '') {
+            filterList.push(`cited_by_count:>=${filters.citedByCountMin}`);
+            console.log('Added cited_by_count min filter:', filters.citedByCountMin);
+        }
+        if (filters.citedByCountMax !== undefined && filters.citedByCountMax !== '') {
+            filterList.push(`cited_by_count:<=${filters.citedByCountMax}`);
+            console.log('Added cited_by_count max filter:', filters.citedByCountMax);
+        }
+        
+        // Filtreleri ekle
+        if (filterList.length > 0) {
+            url += `&filter=${filterList.join(',')}`;
+            console.log('Final filter string:', filterList.join(','));
+        }
+        
+        // Sıralama
+        if (filters.sort && filters.sort !== 'relevance') {
+            url += `&sort=${filters.sort}`;
+            console.log('Added sort:', filters.sort);
+        }
+        
+        console.log('Final URL:', url);
+        return url;
+    }
+
+    // Filtreleri toplayan fonksiyon
+    function collectFilters() {
+        const filters = {};
+        
+        // Yayın yılı filtreleri
+        const yearFrom = document.getElementById('publication-year-from').value;
+        const yearTo = document.getElementById('publication-year-to').value;
+        
+        if (yearFrom) {
+            filters.fromPublicationDate = `${yearFrom}-01-01`;
+        }
+        if (yearTo) {
+            filters.toPublicationDate = `${yearTo}-12-31`;
+        }
+        
+        // Makale türü
+        const workType = document.getElementById('work-type').value;
+        if (workType) {
+            filters.workType = workType;
+        }
+        
+        // Dil
+        const language = document.getElementById('language').value;
+        if (language) {
+            filters.language = language;
+        }
+        
+        // Açık erişim
+        const openAccess = document.getElementById('open-access').value;
+        if (openAccess !== '') {
+            filters.isOa = openAccess;
+        }
+        
+        // DOI durumu
+        const hasDoi = document.getElementById('has-doi').value;
+        if (hasDoi !== '') {
+            filters.hasDoi = hasDoi;
+        }
+        
+        // PMID durumu
+        const hasPmid = document.getElementById('has-pmid').value;
+        if (hasPmid !== '') {
+            filters.hasPmid = hasPmid;
+        }
+        
+        // Referans durumu
+        const hasReferences = document.getElementById('has-references').value;
+        if (hasReferences !== '') {
+            filters.hasReferences = hasReferences;
+        }
+        
+        // Özet durumu
+        const hasAbstract = document.getElementById('has-abstract').value;
+        if (hasAbstract !== '') {
+            filters.hasAbstract = hasAbstract;
+        }
+        
+        // Geri çekilme durumu
+        const isRetracted = document.getElementById('is-retracted').value;
+        if (isRetracted !== '') {
+            filters.isRetracted = isRetracted;
+        }
+        
+        // Paratext durumu
+        const isParatext = document.getElementById('is-paratext').value;
+        if (isParatext !== '') {
+            filters.isParatext = isParatext;
+        }
+        
+        // Versiyon türü
+        const version = document.getElementById('version').value;
+        if (version) {
+            filters.version = version;
+        }
+        
+        // Atıf sayısı aralığı
+        const citedByCountMin = document.getElementById('cited-by-count-min').value;
+        if (citedByCountMin) {
+            filters.citedByCountMin = citedByCountMin;
+        }
+        
+        const citedByCountMax = document.getElementById('cited-by-count-max').value;
+        if (citedByCountMax) {
+            filters.citedByCountMax = citedByCountMax;
+        }
+        
+        // Sıralama
+        const sortBy = document.getElementById('sort-by').value;
+        if (sortBy && sortBy !== 'relevance') {
+            filters.sort = sortBy;
+        }
+        
+        return filters;
+    }
+
+    // Filtreleri temizleme fonksiyonu
+    function clearFilters() {
+        document.getElementById('publication-year-from').value = '';
+        document.getElementById('publication-year-to').value = '';
+        document.getElementById('work-type').value = '';
+        document.getElementById('language').value = '';
+        document.getElementById('open-access').value = '';
+        document.getElementById('has-doi').value = '';
+        document.getElementById('has-pmid').value = '';
+        document.getElementById('has-references').value = '';
+        document.getElementById('has-abstract').value = '';
+        document.getElementById('is-retracted').value = '';
+        document.getElementById('is-paratext').value = '';
+        document.getElementById('version').value = '';
+        document.getElementById('cited-by-count-min').value = '';
+        document.getElementById('cited-by-count-max').value = '';
+        document.getElementById('sort-by').value = 'relevance';
+    }
+
+    // Filtreleri temizleme butonu
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', clearFilters);
+    }
+
+    // Gelişmiş filtreler aç/kapa (yeni panel için)
+    const advancedFiltersBtn = document.getElementById('toggle-advanced-filters');
+    const advancedFiltersPanel = document.getElementById('advanced-filters-panel');
+    if (advancedFiltersBtn && advancedFiltersPanel) {
+        advancedFiltersBtn.addEventListener('click', () => {
+            advancedFiltersPanel.classList.toggle('active');
+        });
+        // Sayfa yüklendiğinde panel gizli olsun
+        advancedFiltersPanel.classList.remove('active');
+    }
+
+    // Drawer aç/kapa işlevselliği
+    const openDrawerBtn = document.getElementById('open-filters-drawer');
+    const closeDrawerBtn = document.getElementById('close-filters-drawer');
+    const filtersDrawer = document.getElementById('filters-drawer');
+    const filtersDrawerOverlay = document.getElementById('filters-drawer-overlay');
+
+    function openDrawer() {
+        filtersDrawer.classList.add('active');
+        filtersDrawerOverlay.classList.add('active');
+    }
+    function closeDrawer() {
+        filtersDrawer.classList.remove('active');
+        filtersDrawerOverlay.classList.remove('active');
+    }
+    if (openDrawerBtn && closeDrawerBtn && filtersDrawer && filtersDrawerOverlay) {
+        openDrawerBtn.addEventListener('click', openDrawer);
+        closeDrawerBtn.addEventListener('click', closeDrawer);
+        filtersDrawerOverlay.addEventListener('click', closeDrawer);
+    }
+
     // Profil yükleme fonksiyonu
     async function loadProfile() {
         const loading = document.getElementById('profile-loading');
@@ -446,10 +776,84 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // HTML escape
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function renderPaperCard(paper) {
+        const allAuthors = (paper.authorships || []).map(a => escapeHtml(a.author.display_name));
+        let authors = '';
+        if (allAuthors.length > 0) {
+            if (allAuthors.length <= 3) {
+                authors = allAuthors.join(', ');
+            } else {
+                authors = allAuthors.slice(0, 3).join(', ') + ` ve ${allAuthors.length - 3} diğer`;
+            }
+        }
+        const venue = paper.primary_location && paper.primary_location.source
+            ? escapeHtml(paper.primary_location.source.display_name)
+            : '';
+        const pdf = paper.primary_location && paper.primary_location.pdf_url
+            ? `<a href="${paper.primary_location.pdf_url}" target="_blank" title="PDF"><span style='font-size:1.1em;'>📄</span> PDF</a>` : '';
+        const doi = paper.doi ? `<a href="${paper.doi}" target="_blank" title="DOI"><span style='font-size:1.1em;'>🔗</span> DOI</a>` : '';
+        const year = paper.publication_year ? `<span title='Yayın Yılı'>📅 ${paper.publication_year}</span>` : '';
+        const cited = typeof paper.cited_by_count === 'number' ? `<span title='Atıf Sayısı'>⭐ ${paper.cited_by_count}</span>` : '';
+        return `
+            <div class="paper-card">
+                <div class="paper-title">${escapeHtml(paper.title)}</div>
+                <div class="paper-meta">
+                    ${authors ? `<span>👤 ${authors}</span>` : ''}
+                    ${venue ? `<span>📚 ${venue}</span>` : ''}
+                    ${year}
+                    ${cited}
+                    ${doi}
+                    ${pdf}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderPaperSearchResults(papers) {
+        const count = papers && papers.length ? papers.length : 0;
+        const countHtml = `<div class='search-result-count'><span><b>${count}</b></span> <span>makale bulundu</span></div>`;
+        // Sonuç sayısını arama barının altındaki kutuya yaz
+        const countDiv = document.getElementById('search-result-count');
+        if (countDiv) countDiv.innerHTML = countHtml;
+        if (!papers || papers.length === 0) {
+            return `<div class="error-message">Makale bulunamadı.</div>`;
+        }
+        return `<div class='papers-list'>${papers.map(renderPaperCard).join('')}</div>`;
+    }
+
+    // Custom dropdown (result-count) işlevselliği
+    const resultCountBtn = document.getElementById('result-count-btn');
+    const resultCountList = document.getElementById('result-count-list');
+    const resultCountInput = document.getElementById('result-count');
+    if (resultCountBtn && resultCountList && resultCountInput) {
+        resultCountBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isOpen = resultCountList.style.display === 'block';
+            resultCountList.style.display = isOpen ? 'none' : 'block';
+        });
+        resultCountList.querySelectorAll('li').forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const value = item.getAttribute('data-value');
+                resultCountBtn.textContent = item.textContent;
+                resultCountInput.value = value;
+                resultCountList.style.display = 'none';
+                // Aktif class
+                resultCountList.querySelectorAll('li').forEach(li => li.classList.remove('active'));
+                item.classList.add('active');
+                // Sonuç sayısı değişince dinamik arama tetikle
+                if (typeof debouncedAutoSearch === 'function') debouncedAutoSearch();
+            });
+        });
+        // Dışarı tıklanınca menüyü kapat
+        document.addEventListener('click', function(e) {
+            resultCountList.style.display = 'none';
+        });
     }
 }); 

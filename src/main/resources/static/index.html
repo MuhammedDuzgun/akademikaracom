@@ -14,6 +14,7 @@
             <nav class="main-nav">
                 <button class="nav-btn active" data-section="pdf-analysis">Makale Analizi</button>
                 <button class="nav-btn" data-section="keywords">Litratür Araştır</button>
+                <button class="nav-btn" data-section="paper-search">Makale Bul</button>
                 <button class="nav-btn" data-section="author-search">Yazar Ara</button>
                 <button class="nav-btn" data-section="institution-search">Kurum Ara</button>
                 <button class="nav-btn" data-section="profile">Profilim</button>
@@ -47,6 +48,130 @@
             <div id="keywords-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="keywords-result"></div>
             <div id="openalex-result"></div>
+        </section>
+        <!-- Makale Bul Bölümü -->
+        <section id="paper-search-section" class="main-section" aria-labelledby="paper-search-title">
+            <h2 id="paper-search-title">Makale Bul</h2>
+            <div class="searchbar-drawer-wrap">
+                <form id="paper-search-form" autocomplete="off" class="searchbar-drawer-form">
+                    <input type="text" id="paper-search-input" name="paper-search-input" required placeholder="Makale başlığı veya anahtar kelime...">
+                    <div class="custom-dropdown" id="result-count-dropdown">
+                        <button type="button" id="result-count-btn" class="custom-dropdown-btn">10 sonuç</button>
+                        <ul class="custom-dropdown-list" id="result-count-list" style="display:none;">
+                            <li data-value="10">10 sonuç</li>
+                            <li data-value="20">20 sonuç</li>
+                            <li data-value="50">50 sonuç</li>
+                            <li data-value="100">100 sonuç</li>
+                        </ul>
+                        <input type="hidden" id="result-count" name="result-count" value="10">
+                    </div>
+                    <button type="submit" class="btn-primary">Ara</button>
+                    <button type="button" id="open-filters-drawer" class="filters-drawer-open-btn">Filtreler</button>
+                    <div id="search-result-count"></div>
+                </form>
+            </div>
+            <div id="filters-drawer-overlay" class="filters-drawer-overlay"></div>
+            <aside id="filters-drawer" class="filters-drawer">
+                <button type="button" id="close-filters-drawer" class="filters-drawer-close-btn">×</button>
+                <h3>Filtreler</h3>
+                <div class="filters-drawer-fields">
+                    <label for="work-type">Tür</label>
+                    <select id="work-type" name="work-type" class="auto-search">
+                        <option value="">Tümü</option>
+                        <option value="article">Makale</option>
+                        <option value="book">Kitap</option>
+                        <option value="proceedings">Konferans</option>
+                        <option value="dataset">Veri Seti</option>
+                        <option value="dissertation">Tez</option>
+                        <option value="review">İnceleme</option>
+                        <option value="other">Diğer</option>
+                    </select>
+                    <label for="language">Dil</label>
+                    <select id="language" name="language" class="auto-search">
+                        <option value="">Dil</option>
+                        <option value="en">İngilizce</option>
+                        <option value="tr">Türkçe</option>
+                        <option value="de">Almanca</option>
+                        <option value="fr">Fransızca</option>
+                        <option value="es">İspanyolca</option>
+                        <option value="it">İtalyanca</option>
+                        <option value="pt">Portekizce</option>
+                        <option value="ru">Rusça</option>
+                        <option value="zh">Çince</option>
+                        <option value="ja">Japonca</option>
+                        <option value="ko">Korece</option>
+                        <option value="ar">Arapça</option>
+                    </select>
+                    <label for="sort-by">Sıralama</label>
+                    <select id="sort-by" name="sort-by" class="auto-search">
+                        <option value="relevance">Sıralama</option>
+                        <option value="cited_by_count:desc">Atıf (Azalan)</option>
+                        <option value="cited_by_count:asc">Atıf (Artan)</option>
+                        <option value="publication_year:desc">Yıl (Yeni)</option>
+                        <option value="publication_year:asc">Yıl (Eski)</option>
+                    </select>
+                    <label for="publication-year-from">Başlangıç Yılı</label>
+                    <input type="number" id="publication-year-from" name="publication-year-from" min="1900" max="2024" placeholder="Başlangıç" class="auto-search">
+                    <label for="publication-year-to">Bitiş Yılı</label>
+                    <input type="number" id="publication-year-to" name="publication-year-to" min="1900" max="2024" placeholder="Bitiş" class="auto-search">
+                    <label for="open-access">Açık Erişim</label>
+                    <select id="open-access" name="open-access" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Açık</option>
+                        <option value="false">Kapalı</option>
+                    </select>
+                    <label for="has-doi">DOI</label>
+                    <select id="has-doi" name="has-doi" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Var</option>
+                        <option value="false">Yok</option>
+                    </select>
+                    <label for="has-pmid">PMID</label>
+                    <select id="has-pmid" name="has-pmid" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Var</option>
+                        <option value="false">Yok</option>
+                    </select>
+                    <label for="has-references">Referans</label>
+                    <select id="has-references" name="has-references" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Var</option>
+                        <option value="false">Yok</option>
+                    </select>
+                    <label for="has-abstract">Özet</label>
+                    <select id="has-abstract" name="has-abstract" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Var</option>
+                        <option value="false">Yok</option>
+                    </select>
+                    <label for="is-retracted">Geri Çekilme</label>
+                    <select id="is-retracted" name="is-retracted" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Çekilmiş</option>
+                        <option value="false">Çekilmemiş</option>
+                    </select>
+                    <label for="is-paratext">Paratext</label>
+                    <select id="is-paratext" name="is-paratext" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Evet</option>
+                        <option value="false">Hayır</option>
+                    </select>
+                    <label for="version">Versiyon</label>
+                    <select id="version" name="version" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="publishedVersion">Yayınlanmış</option>
+                        <option value="acceptedVersion">Kabul Edilmiş</option>
+                        <option value="submittedVersion">Gönderilmiş</option>
+                    </select>
+                    <label for="cited-by-count-min">Min. Atıf</label>
+                    <input type="number" id="cited-by-count-min" name="cited-by-count-min" min="0" placeholder="Min. Atıf" class="auto-search">
+                    <label for="cited-by-count-max">Max. Atıf</label>
+                    <input type="number" id="cited-by-count-max" name="cited-by-count-max" min="0" placeholder="Max. Atıf" class="auto-search">
+                    <button type="button" id="clear-filters" class="btn-secondary filters-clear-btn">Filtreleri Temizle</button>
+                </div>
+            </aside>
+            <div id="paper-search-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="paper-search-result"></div>
         </section>
         <!-- Yazar Ara Bölümü -->
         <section id="author-search-section" class="main-section" aria-labelledby="author-search-title">
