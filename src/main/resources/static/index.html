@@ -38,11 +38,11 @@
         <!-- Anahtar Kelimeden Makale Bul Bölümü -->
         <section id="keywords-section" class="main-section" aria-labelledby="keywords-title">
             <h2 id="keywords-title">Litratür Araştır</h2>
-            <div class="section-desc">Makale özetini ekleyin ve bu özetten yola çıkarak sizlere önemli çalışmalar listelensin.</div>
-            <form id="keywords-form" autocomplete="off">
-                <label for="keywords-abstract">Makale Özeti</label>
-                <textarea id="keywords-abstract" name="keywords-abstract" rows="5" required placeholder="Makale özetini buraya girin..."></textarea>
-                <button type="submit" class="btn-primary">Litratür Araştır</button>
+            <div class="section-desc">Makale özetini girin ve özetten yola çıkarak tespit edilen anahtar kelimeler bağlamında akademik çalışmalara erişin.</div>
+            <form id="keywords-form" autocomplete="off" style="max-width:700px;min-width:0;width:100%;margin-left:auto;margin-right:auto;">
+                <label for="keywords-abstract" style="font-size:1.18rem;font-weight:800;color:#2563eb;margin-bottom:0.5rem;letter-spacing:0.01em;">Makale Özeti</label>
+                <textarea id="keywords-abstract" name="keywords-abstract" rows="8" required placeholder="Makale özetini buraya girin..." style="width:100%;min-height:180px;font-size:1.13rem;padding:1.2rem 1.1rem;border-radius:1.2rem;border:2px solid #2563eb;background:#f8fafc;color:#1e293b;box-shadow:0 2px 12px 0 rgba(37,99,235,0.07);margin-bottom:1.2rem;resize:vertical;"></textarea>
+                <button type="submit" class="btn-primary" style="font-size:1.13rem;padding:1.1rem 0;border-radius:1.2rem;font-weight:900;letter-spacing:0.01em;width:100%;margin-top:0.7rem;">Litratür Araştır</button>
                 <div id="keywords-abstract-error" class="error-message"></div>
             </form>
             <div id="keywords-loading" class="loading" style="display:none;">Yükleniyor...</div>
@@ -55,16 +55,6 @@
             <div class="searchbar-drawer-wrap">
                 <form id="paper-search-form" autocomplete="off" class="searchbar-drawer-form">
                     <input type="text" id="paper-search-input" name="paper-search-input" required placeholder="Makale başlığı veya anahtar kelime...">
-                    <div class="custom-dropdown" id="result-count-dropdown">
-                        <button type="button" id="result-count-btn" class="custom-dropdown-btn">10 sonuç</button>
-                        <ul class="custom-dropdown-list" id="result-count-list" style="display:none;">
-                            <li data-value="10">10 sonuç</li>
-                            <li data-value="20">20 sonuç</li>
-                            <li data-value="50">50 sonuç</li>
-                            <li data-value="100">100 sonuç</li>
-                        </ul>
-                        <input type="hidden" id="result-count" name="result-count" value="10">
-                    </div>
                     <button type="submit" class="btn-primary">Ara</button>
                     <button type="button" id="open-filters-drawer" class="filters-drawer-open-btn">Filtreler</button>
                     <div id="search-result-count"></div>
@@ -177,12 +167,61 @@
         <section id="author-search-section" class="main-section" aria-labelledby="author-search-title">
             <h2 id="author-search-title">Yazar Ara</h2>
             <div class="section-desc">OpenAlex veritabanında yazarları arayın ve akademik profillerini inceleyin.</div>
-            <form id="author-search-form" autocomplete="off">
-                <label for="author-search-input">Yazar Adı</label>
-                <input type="text" id="author-search-input" name="author-search-input" required placeholder="Yazar adı girin...">
-                <button type="submit" class="btn-primary">Ara</button>
-                <div id="author-search-error" class="error-message"></div>
-            </form>
+            <div class="searchbar-drawer-wrap">
+                <form id="author-search-form" autocomplete="off" class="searchbar-drawer-form">
+                    <input type="text" id="author-search-input" name="author-search-input" required placeholder="Yazar adı girin..." class="auto-search">
+                    <button type="submit" class="btn-primary">Ara</button>
+                    <button type="button" id="open-author-filters-drawer" class="filters-drawer-open-btn">Filtreler</button>
+                    <div id="author-search-result-count" class="search-result-count"></div>
+                    <div id="author-search-error" class="error-message"></div>
+                </form>
+            </div>
+            <div id="author-filters-drawer-overlay" class="filters-drawer-overlay"></div>
+            <aside id="author-filters-drawer" class="filters-drawer">
+                <button type="button" id="close-author-filters-drawer" class="filters-drawer-close-btn">×</button>
+                <h3>Yazar Filtreleri</h3>
+                <div class="filters-drawer-fields">
+                    <label for="author-country">Ülke Kodu</label>
+                    <input type="text" id="author-country" name="author-country" placeholder="TR, US, GB..." class="auto-search">
+                    <label for="author-orcid">ORCID</label>
+                    <input type="text" id="author-orcid" name="author-orcid" placeholder="ORCID ID..." class="auto-search">
+                    <label for="author-cited-min">Min. Atıf</label>
+                    <input type="number" id="author-cited-min" name="author-cited-min" min="0" placeholder="Min. Atıf" class="auto-search">
+                    <label for="author-cited-max">Max. Atıf</label>
+                    <input type="number" id="author-cited-max" name="author-cited-max" min="0" placeholder="Max. Atıf" class="auto-search">
+                    <label for="author-works-min">Min. Yayın</label>
+                    <input type="number" id="author-works-min" name="author-works-min" min="0" placeholder="Min. Yayın" class="auto-search">
+                    <label for="author-works-max">Max. Yayın</label>
+                    <input type="number" id="author-works-max" name="author-works-max" min="0" placeholder="Max. Yayın" class="auto-search">
+                    <label for="author-hindex-min">Min. h-index</label>
+                    <input type="number" id="author-hindex-min" name="author-hindex-min" min="0" placeholder="Min. h-index" class="auto-search">
+                    <label for="author-hindex-max">Max. h-index</label>
+                    <input type="number" id="author-hindex-max" name="author-hindex-max" min="0" placeholder="Max. h-index" class="auto-search">
+                    <label for="author-i10-min">Min. i10-index</label>
+                    <input type="number" id="author-i10-min" name="author-i10-min" min="0" placeholder="Min. i10-index" class="auto-search">
+                    <label for="author-i10-max">Max. i10-index</label>
+                    <input type="number" id="author-i10-max" name="author-i10-max" min="0" placeholder="Max. i10-index" class="auto-search">
+                    <label for="author-concept">Alan ID</label>
+                    <input type="text" id="author-concept" name="author-concept" placeholder="Alan ID..." class="auto-search">
+                    <label for="author-has-orcid">ORCID Durumu</label>
+                    <select id="author-has-orcid" name="author-has-orcid" class="auto-search">
+                        <option value="">Hepsi</option>
+                        <option value="true">Var</option>
+                        <option value="false">Yok</option>
+                    </select>
+                    <label for="author-sort">Sıralama</label>
+                    <select id="author-sort" name="author-sort" class="auto-search">
+                        <option value="relevance">Sıralama</option>
+                        <option value="cited_by_count:desc">Atıf (Azalan)</option>
+                        <option value="cited_by_count:asc">Atıf (Artan)</option>
+                        <option value="works_count:desc">Yayın (Azalan)</option>
+                        <option value="works_count:asc">Yayın (Artan)</option>
+                        <option value="display_name:asc">İsim (A-Z)</option>
+                        <option value="display_name:desc">İsim (Z-A)</option>
+                    </select>
+                    <button type="button" id="clear-author-filters" class="btn-secondary filters-clear-btn">Filtreleri Temizle</button>
+                </div>
+            </aside>
             <div id="author-search-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="author-search-result"></div>
         </section>
@@ -190,12 +229,13 @@
         <section id="institution-search-section" class="main-section" aria-labelledby="institution-search-title">
             <h2 id="institution-search-title">Kurum Ara</h2>
             <div class="section-desc">Dünyadaki akademik kurumları arayın ve istatistiklerini görüntüleyin.</div>
-            <form id="institution-search-form" autocomplete="off">
-                <label for="institution-search-input">Kurum Adı</label>
-                <input type="text" id="institution-search-input" name="institution-search-input" required placeholder="Kurum adı girin...">
-                <button type="submit" class="btn-primary">Ara</button>
-                <div id="institution-search-error" class="error-message"></div>
-            </form>
+            <div class="searchbar-drawer-wrap">
+                <form id="institution-search-form" autocomplete="off" class="searchbar-drawer-form">
+                    <input type="text" id="institution-search-input" name="institution-search-input" required placeholder="Kurum adı girin...">
+                    <button type="submit" class="btn-primary">Ara</button>
+                    <div id="institution-search-error" class="error-message"></div>
+                </form>
+            </div>
             <div id="institution-search-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="institution-search-result"></div>
         </section>

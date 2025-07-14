@@ -243,37 +243,268 @@ document.addEventListener('DOMContentLoaded', () => {
     const authorSearchResult = document.getElementById('author-search-result');
     const authorSearchLoading = document.getElementById('author-search-loading');
     const authorSearchError = document.getElementById('author-search-error');
+    // Sayfalama değişkenleri
+    let authorCurrentPage = 1;
+    let authorTotalPages = 1;
+    let authorTotalCount = 0;
+    let authorLastQuery = '';
+    let authorLastFilters = null;
+    let authorLastSort = null;
+    // Gelişmiş filtreler
+    const authorCountryInput = document.getElementById('author-country');
+    const authorOrcidInput = document.getElementById('author-orcid');
+    const authorCitedMinInput = document.getElementById('author-cited-min');
+    const authorCitedMaxInput = document.getElementById('author-cited-max');
+    const authorWorksMinInput = document.getElementById('author-works-min');
+    const authorWorksMaxInput = document.getElementById('author-works-max');
+    const authorHindexMinInput = document.getElementById('author-hindex-min');
+    const authorHindexMaxInput = document.getElementById('author-hindex-max');
+    const authorI10MinInput = document.getElementById('author-i10-min');
+    const authorI10MaxInput = document.getElementById('author-i10-max');
+    const authorConceptInput = document.getElementById('author-concept');
+    const authorHasOrcidInput = document.getElementById('author-has-orcid');
+    const authorSortInput = document.getElementById('author-sort');
+    
+    // Debug: Elementlerin bulunup bulunmadığını kontrol et
+    console.log('Yazar filtre elementleri:', {
+        authorCountryInput: !!authorCountryInput,
+        authorOrcidInput: !!authorOrcidInput,
+        authorCitedMinInput: !!authorCitedMinInput,
+        authorCitedMaxInput: !!authorCitedMaxInput,
+        authorWorksMinInput: !!authorWorksMinInput,
+        authorWorksMaxInput: !!authorWorksMaxInput,
+        authorHindexMinInput: !!authorHindexMinInput,
+        authorHindexMaxInput: !!authorHindexMaxInput,
+        authorI10MinInput: !!authorI10MinInput,
+        authorI10MaxInput: !!authorI10MaxInput,
+        authorConceptInput: !!authorConceptInput,
+        authorHasOrcidInput: !!authorHasOrcidInput,
+        authorSortInput: !!authorSortInput
+    });
+
+    function collectAuthorFilters() {
+        const filters = [];
+        
+        // Ülke kodu - sadece geçerli değerler ekle
+        if (authorCountryInput && authorCountryInput.value.trim()) {
+            const countryCode = authorCountryInput.value.trim().toUpperCase();
+            if (countryCode.length === 2) {
+                filters.push(`last_known_institutions.country_code:${countryCode}`);
+            }
+        }
+        
+        // ORCID - dökümantasyona göre tam URL veya ID formatı
+        if (authorOrcidInput && authorOrcidInput.value.trim()) {
+            const orcid = authorOrcidInput.value.trim();
+            // ORCID ID formatı: https://orcid.org/0000-0001-2345-6789
+            if (orcid.includes('orcid.org/')) {
+                filters.push(`orcid:${orcid}`);
+            } else if (orcid.match(/^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$/)) {
+                // Sadece ID formatı ise tam URL'ye çevir
+                filters.push(`orcid:https://orcid.org/${orcid}`);
+            }
+        }
+        
+        // Atıf sayısı aralığı - OpenAlex API range query formatı
+        const minCited = authorCitedMinInput && authorCitedMinInput.value.trim() ? parseInt(authorCitedMinInput.value.trim()) : null;
+        const maxCited = authorCitedMaxInput && authorCitedMaxInput.value.trim() ? parseInt(authorCitedMaxInput.value.trim()) : null;
+        
+        if (minCited !== null && maxCited !== null && !isNaN(minCited) && !isNaN(maxCited) && minCited >= 0 && maxCited >= 0) {
+            // Hem min hem max varsa: min-max formatı
+            filters.push(`cited_by_count:${minCited}-${maxCited}`);
+        } else if (minCited !== null && !isNaN(minCited) && minCited >= 0) {
+            // Sadece min varsa: min- formatı
+            filters.push(`cited_by_count:${minCited}-`);
+        } else if (maxCited !== null && !isNaN(maxCited) && maxCited >= 0) {
+            // Sadece max varsa: -max formatı
+            filters.push(`cited_by_count:-${maxCited}`);
+        }
+        
+        // Yayın sayısı aralığı - OpenAlex API range query formatı
+        const minWorks = authorWorksMinInput && authorWorksMinInput.value.trim() ? parseInt(authorWorksMinInput.value.trim()) : null;
+        const maxWorks = authorWorksMaxInput && authorWorksMaxInput.value.trim() ? parseInt(authorWorksMaxInput.value.trim()) : null;
+        
+        if (minWorks !== null && maxWorks !== null && !isNaN(minWorks) && !isNaN(maxWorks) && minWorks >= 0 && maxWorks >= 0) {
+            filters.push(`works_count:${minWorks}-${maxWorks}`);
+        } else if (minWorks !== null && !isNaN(minWorks) && minWorks >= 0) {
+            filters.push(`works_count:${minWorks}-`);
+        } else if (maxWorks !== null && !isNaN(maxWorks) && maxWorks >= 0) {
+            filters.push(`works_count:-${maxWorks}`);
+        }
+        
+        // h-index aralığı - OpenAlex API range query formatı
+        const minHindex = authorHindexMinInput && authorHindexMinInput.value.trim() ? parseInt(authorHindexMinInput.value.trim()) : null;
+        const maxHindex = authorHindexMaxInput && authorHindexMaxInput.value.trim() ? parseInt(authorHindexMaxInput.value.trim()) : null;
+        
+        if (minHindex !== null && maxHindex !== null && !isNaN(minHindex) && !isNaN(maxHindex) && minHindex >= 0 && maxHindex >= 0) {
+            filters.push(`summary_stats.h_index:${minHindex}-${maxHindex}`);
+        } else if (minHindex !== null && !isNaN(minHindex) && minHindex >= 0) {
+            filters.push(`summary_stats.h_index:${minHindex}-`);
+        } else if (maxHindex !== null && !isNaN(maxHindex) && maxHindex >= 0) {
+            filters.push(`summary_stats.h_index:-${maxHindex}`);
+        }
+        
+        // i10-index aralığı - OpenAlex API range query formatı
+        const minI10 = authorI10MinInput && authorI10MinInput.value.trim() ? parseInt(authorI10MinInput.value.trim()) : null;
+        const maxI10 = authorI10MaxInput && authorI10MaxInput.value.trim() ? parseInt(authorI10MaxInput.value.trim()) : null;
+        
+        if (minI10 !== null && maxI10 !== null && !isNaN(minI10) && !isNaN(maxI10) && minI10 >= 0 && maxI10 >= 0) {
+            filters.push(`summary_stats.i10_index:${minI10}-${maxI10}`);
+        } else if (minI10 !== null && !isNaN(minI10) && minI10 >= 0) {
+            filters.push(`summary_stats.i10_index:${minI10}-`);
+        } else if (maxI10 !== null && !isNaN(maxI10) && maxI10 >= 0) {
+            filters.push(`summary_stats.i10_index:-${maxI10}`);
+        }
+        
+        // Alan ID - dökümantasyona göre concepts.id kullan
+        if (authorConceptInput && authorConceptInput.value.trim()) {
+            const conceptId = authorConceptInput.value.trim();
+            // OpenAlex concept ID formatı: C41008148
+            if (conceptId.match(/^C\d+$/)) {
+                filters.push(`concepts.id:${conceptId}`);
+            }
+        }
+        
+        // ORCID durumu - dökümantasyona göre boolean değer
+        if (authorHasOrcidInput && authorHasOrcidInput.value !== '') {
+            const hasOrcid = authorHasOrcidInput.value;
+            if (hasOrcid === 'true' || hasOrcid === 'false') {
+                filters.push(`has_orcid:${hasOrcid}`);
+            }
+        }
+        
+        console.log('Toplanan yazar filtreleri:', filters);
+        console.log('Filtre değerleri:', {
+            country: authorCountryInput?.value,
+            orcid: authorOrcidInput?.value,
+            citedMin: authorCitedMinInput?.value,
+            citedMax: authorCitedMaxInput?.value,
+            worksMin: authorWorksMinInput?.value,
+            worksMax: authorWorksMaxInput?.value,
+            hindexMin: authorHindexMinInput?.value,
+            hindexMax: authorHindexMaxInput?.value,
+            i10Min: authorI10MinInput?.value,
+            i10Max: authorI10MaxInput?.value,
+            concept: authorConceptInput?.value,
+            hasOrcid: authorHasOrcidInput?.value,
+            sort: authorSortInput?.value
+        });
+        console.log('Filtre string formatı:', filters.join(','));
+        return filters;
+    }
+
+    function buildOpenAlexAuthorUrl(query, filters, sort, page = 1) {
+        let url = `https://api.openalex.org/authors?search=${encodeURIComponent(query)}&per_page=10&page=${page}&select=id,display_name,display_name_alternatives,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,affiliations,x_concepts,ids,works_api_url,counts_by_year`;
+        
+        if (filters && filters.length > 0) {
+            // Tüm filtreleri tek bir filter parametresinde birleştir
+            const filterString = filters.join(',');
+            url += `&filter=${filterString}`;
+            console.log('Filtreler:', filters);
+            console.log('Filtre string:', filterString);
+        }
+        
+        if (sort && sort !== 'relevance') {
+            url += `&sort=${sort}`;
+            console.log('Sıralama:', sort);
+        }
+        
+        console.log('Oluşturulan URL:', url);
+        return url;
+    }
 
     if (authorSearchForm) {
         authorSearchForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!authorSearchInput.value.trim()) return;
             authorSearchError.textContent = '';
             authorSearchResult.innerHTML = '';
-            const query = authorSearchInput.value.trim();
-            if (!query) {
-                authorSearchError.textContent = 'Yazar adı zorunludur.';
-                return;
-            }
-            authorSearchLoading.style.display = 'block';
-            try {
-                const url = `https://api.openalex.org/authors?search=${encodeURIComponent(query)}&per_page=10&select=id,display_name,display_name_alternatives,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,affiliations,x_concepts,ids,works_api_url,counts_by_year`;
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error('OpenAlex API hatası');
-                const data = await resp.json();
-                if (!data.results || data.results.length === 0) {
-                    authorSearchResult.innerHTML = '<div class="error-message">Yazar bulunamadı.</div>';
-                } else {
-                    authorSearchResult.innerHTML = renderAuthorSearchResults(data.results);
-                }
-            } catch (err) {
-                authorSearchResult.innerHTML = `<div class='error-message'>Yazarlar alınırken hata oluştu: ${err.message}</div>`;
-            } finally {
-                authorSearchLoading.style.display = 'none';
-            }
+            // Filtreleri topla
+            const filters = collectAuthorFilters();
+            const sort = authorSortInput && authorSortInput.value ? authorSortInput.value : undefined;
+            authorCurrentPage = 1;
+            authorLastQuery = authorSearchInput.value.trim();
+            authorLastFilters = filters;
+            authorLastSort = sort;
+            await fetchAndRenderAuthors(authorLastQuery, authorLastFilters, authorLastSort, authorCurrentPage);
         });
     }
 
+    function renderAuthorPagination(current, total) {
+        if (total <= 1) return '';
+        let html = `<div class='paper-pagination'>`;
+        if (current > 1) {
+            html += `<button class='pagination-btn' data-page='${current - 1}'>&laquo; Önceki</button>`;
+        }
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+                html += `<button class='pagination-btn${i === current ? ' active' : ''}' data-page='${i}'>${i}</button>`;
+            } else if (i === current - 3 || i === current + 3) {
+                html += `<span class='pagination-ellipsis'>...</span>`;
+            }
+        }
+        if (current < total) {
+            html += `<button class='pagination-btn' data-page='${current + 1}'>Sonraki &raquo;</button>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    async function fetchAndRenderAuthors(query, filters, sort, page) {
+        authorSearchLoading.style.display = 'block';
+        try {
+            const url = buildOpenAlexAuthorUrl(query, filters, sort, page);
+            console.log('API çağrısı yapılıyor:', url);
+            
+            const resp = await fetch(url);
+            console.log('API yanıt durumu:', resp.status, resp.statusText);
+            
+            if (!resp.ok) {
+                const errorText = await resp.text();
+                console.error('API hata detayı:', errorText);
+                throw new Error(`OpenAlex API hatası (${resp.status}): ${errorText}`);
+            }
+            
+            const data = await resp.json();
+            console.log('API yanıt verisi:', data);
+            
+            authorTotalCount = data.meta && data.meta.count ? data.meta.count : 0;
+            authorTotalPages = Math.ceil(authorTotalCount / 10);
+            
+            if (!data.results || data.results.length === 0) {
+                authorSearchResult.innerHTML = '<div class="error-message">Yazar bulunamadı.</div>';
+            } else {
+                let paginationHtml = renderAuthorPagination(page, authorTotalPages);
+                authorSearchResult.innerHTML =
+                    paginationHtml +
+                    renderAuthorSearchResults(data.results) +
+                    paginationHtml;
+            }
+        } catch (err) {
+            console.error('Yazar arama hatası:', err);
+            authorSearchResult.innerHTML = `<div class='error-message'>Yazarlar alınırken hata oluştu: ${err.message}</div>`;
+        } finally {
+            authorSearchLoading.style.display = 'none';
+        }
+    }
+
     function renderAuthorSearchResults(authors) {
+        const count = authorTotalCount || (authors && authors.length ? authors.length : 0);
+        const countHtml = `<span><b>${count}</b></span> <span>yazar bulundu</span>`;
+        // Sonuç sayısını arama barının sağına yaz
+        const countDiv = document.getElementById('author-search-result-count');
+        if (countDiv) {
+            if (authors && authors.length > 0) {
+                countDiv.innerHTML = countHtml;
+                countDiv.style.display = '';
+            } else {
+                countDiv.innerHTML = '';
+                countDiv.style.display = 'none';
+            }
+        }
+        if (!authors || authors.length === 0) {
+            return `<div class="error-message">Yazar bulunamadı.</div>`;
+        }
         return `<div class='papers-list'>${authors.map(renderAuthorCard).join('')}</div>`;
     }
 
@@ -342,6 +573,120 @@ document.addEventListener('DOMContentLoaded', () => {
     const institutionSearchLoading = document.getElementById('institution-search-loading');
     const institutionSearchError = document.getElementById('institution-search-error');
 
+    // --- AUTOCOMPLETE (KURUM) ---
+    let institutionAutocompleteBox;
+    let institutionAutocompleteResults = [];
+    let institutionAutocompleteSelected = -1;
+
+    function createInstitutionAutocompleteBox() {
+        if (!institutionAutocompleteBox) {
+            institutionAutocompleteBox = document.createElement('div');
+            institutionAutocompleteBox.className = 'autocomplete-box';
+            institutionAutocompleteBox.style.position = 'absolute';
+            institutionAutocompleteBox.style.zIndex = 1000;
+            institutionAutocompleteBox.style.minWidth = institutionSearchInput.offsetWidth + 'px';
+            institutionSearchInput.parentNode.appendChild(institutionAutocompleteBox);
+        }
+        institutionAutocompleteBox.innerHTML = '';
+        institutionAutocompleteBox.style.display = 'none';
+    }
+
+    function positionInstitutionAutocompleteBox() {
+        if (!institutionAutocompleteBox) return;
+        institutionAutocompleteBox.style.top = (institutionSearchInput.offsetTop + institutionSearchInput.offsetHeight) + 'px';
+        institutionAutocompleteBox.style.left = institutionSearchInput.offsetLeft + 'px';
+        institutionAutocompleteBox.style.minWidth = institutionSearchInput.offsetWidth + 'px';
+    }
+
+    async function fetchInstitutionAutocomplete(query) {
+        const url = `https://api.openalex.org/autocomplete/institutions?q=${encodeURIComponent(query)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return data.results || [];
+    }
+
+    function renderInstitutionAutocomplete(results) {
+        if (!institutionAutocompleteBox) createInstitutionAutocompleteBox();
+        if (!results || results.length === 0) {
+            institutionAutocompleteBox.style.display = 'none';
+            return;
+        }
+        institutionAutocompleteBox.innerHTML = results.map((item, idx) => `
+            <div class='autocomplete-item${idx === institutionAutocompleteSelected ? ' selected' : ''}' data-idx='${idx}'>
+                <span class='autocomplete-name'>${escapeHtml(item.display_name)}</span>
+                ${item.hint ? `<span class='autocomplete-hint'>${escapeHtml(item.hint)}</span>` : ''}
+            </div>
+        `).join('');
+        institutionAutocompleteBox.style.display = 'block';
+        positionInstitutionAutocompleteBox();
+    }
+
+    function clearInstitutionAutocomplete() {
+        if (institutionAutocompleteBox) {
+            institutionAutocompleteBox.innerHTML = '';
+            institutionAutocompleteBox.style.display = 'none';
+        }
+        institutionAutocompleteResults = [];
+        institutionAutocompleteSelected = -1;
+    }
+
+    if (institutionSearchInput) {
+        createInstitutionAutocompleteBox();
+        institutionSearchInput.addEventListener('input', async function(e) {
+            const val = institutionSearchInput.value.trim();
+            if (val.length < 2) {
+                clearInstitutionAutocomplete();
+                return;
+            }
+            try {
+                const results = await fetchInstitutionAutocomplete(val);
+                institutionAutocompleteResults = results;
+                institutionAutocompleteSelected = -1;
+                renderInstitutionAutocomplete(results);
+            } catch {
+                clearInstitutionAutocomplete();
+            }
+        });
+        institutionSearchInput.addEventListener('keydown', function(e) {
+            if (!institutionAutocompleteResults.length || !institutionAutocompleteBox || institutionAutocompleteBox.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                institutionAutocompleteSelected = (institutionAutocompleteSelected + 1) % institutionAutocompleteResults.length;
+                renderInstitutionAutocomplete(institutionAutocompleteResults);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                institutionAutocompleteSelected = (institutionAutocompleteSelected - 1 + institutionAutocompleteResults.length) % institutionAutocompleteResults.length;
+                renderInstitutionAutocomplete(institutionAutocompleteResults);
+            } else if (e.key === 'Enter') {
+                if (institutionAutocompleteSelected >= 0 && institutionAutocompleteResults[institutionAutocompleteSelected]) {
+                    e.preventDefault();
+                    institutionSearchInput.value = institutionAutocompleteResults[institutionAutocompleteSelected].display_name;
+                    clearInstitutionAutocomplete();
+                    if (institutionSearchForm) institutionSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            } else if (e.key === 'Escape') {
+                clearInstitutionAutocomplete();
+            }
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target !== institutionSearchInput && (!institutionAutocompleteBox || !institutionAutocompleteBox.contains(e.target))) {
+                clearInstitutionAutocomplete();
+            }
+        });
+        institutionAutocompleteBox.addEventListener('mousedown', function(e) {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const idx = parseInt(item.getAttribute('data-idx'), 10);
+                if (institutionAutocompleteResults[idx]) {
+                    institutionSearchInput.value = institutionAutocompleteResults[idx].display_name;
+                    clearInstitutionAutocomplete();
+                    if (institutionSearchForm) institutionSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            }
+        });
+    }
+
     if (institutionSearchForm) {
         institutionSearchForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -354,7 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             institutionSearchLoading.style.display = 'block';
             try {
-                const url = `https://api.openalex.org/institutions?search=${encodeURIComponent(query)}&per_page=10&select=id,display_name,ror,country_code,type,works_count,cited_by_count,summary_stats,x_concepts,roles,repositories,works_api_url,lineage,updated_date`;
+                const url = `https://api.openalex.org/institutions?search=${encodeURIComponent(query)}&per_page=10&select=id,display_name,ror,country_code,type,works_count,cited_by_count,summary_stats,x_concepts,roles,repositories,works_api_url,lineage,updated_date,ids,image_thumbnail_url`;
                 const resp = await fetch(url);
                 if (!resp.ok) throw new Error('OpenAlex API hatası');
                 const data = await resp.json();
@@ -394,8 +739,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const roles = (inst.roles || []).map(r => `<span class='pdf-keyword' title='Rol: ${r.role}'>${escapeHtml(r.role)} (${r.works_count})</span>`).join(' ');
         const repos = (inst.repositories || []).map(r => `<a href='${r.id}' target='_blank'>${escapeHtml(r.display_name)}</a>`).join(', ');
         const worksApi = inst.works_api_url ? `<a href='${inst.works_api_url}' target='_blank' class='author-works-link'>Tüm yayınlarını OpenAlex'te gör</a>` : '';
+        const ids = inst.ids || {};
+        const wikipedia = ids.wikipedia ? `<a href='${ids.wikipedia}' target='_blank' title='Wikipedia'><span style='font-size:1.1em;'>📖</span> Wikipedia</a>` : '';
+        const wikidata = ids.wikidata ? `<a href='${ids.wikidata}' target='_blank' title='Wikidata'><span style='font-size:1.1em;'>🗂️</span> Wikidata</a>` : '';
+        const mag = ids.mag ? `<a href='https://www.microsoft.com/en-us/research/project/microsoft-academic-graph/' target='_blank' title='MAG'><span style='font-size:1.1em;'>🧩</span> MAG</a>` : '';
+        const image = inst.image_thumbnail_url ? `<img src='${inst.image_thumbnail_url}' alt='Kurum Logosu' class='institution-logo' style='width:48px;height:48px;border-radius:50%;margin-bottom:0.7em;'>` : '';
         return `
             <div class="paper-card institution-card">
+                ${image}
                 <div class="paper-title">${escapeHtml(inst.display_name)}</div>
                 <div class="paper-meta">
                     ${ror}
@@ -406,6 +757,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${hindex}
                     ${i10}
                     ${meanCited}
+                    ${wikipedia}
+                    ${wikidata}
+                    ${mag}
                 </div>
                 ${concepts ? `<div class='author-concepts-row'>${concepts}</div>` : ''}
                 ${roles ? `<div class='paper-meta'><strong>Roller:</strong> ${roles}</div>` : ''}
@@ -421,6 +775,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const paperSearchResult = document.getElementById('paper-search-result');
     const paperSearchLoading = document.getElementById('paper-search-loading');
     const paperSearchError = document.getElementById('paper-search-error');
+    let paperCurrentPage = 1;
+    let paperTotalPages = 1;
+    let paperTotalCount = 0;
+    let paperLastQuery = '';
+    let paperLastFilters = null;
+
+    function renderPaperPagination(current, total) {
+        if (total <= 1) return '';
+        let html = `<div class='paper-pagination'>`;
+        if (current > 1) {
+            html += `<button class='pagination-btn' data-page='${current - 1}'>&laquo; Önceki</button>`;
+        }
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || Math.abs(i - current) <= 2) {
+                html += `<button class='pagination-btn${i === current ? ' active' : ''}' data-page='${i}'>${i}</button>`;
+            } else if (i === current - 3 || i === current + 3) {
+                html += `<span class='pagination-ellipsis'>...</span>`;
+            }
+        }
+        if (current < total) {
+            html += `<button class='pagination-btn' data-page='${current + 1}'>Sonraki &raquo;</button>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    function buildOpenAlexUrlWithPage(query, filters, page) {
+        let url = buildOpenAlexUrl(query, filters);
+        url = url.replace(/&per_page=\d+/, `&per_page=10`);
+        if (url.includes('&page=')) {
+            url = url.replace(/&page=\d+/, `&page=${page}`);
+        } else {
+            url += `&page=${page}`;
+        }
+        return url;
+    }
 
     if (paperSearchForm) {
         paperSearchForm.addEventListener('submit', async (e) => {
@@ -430,30 +820,61 @@ document.addEventListener('DOMContentLoaded', () => {
             if (paperSearchError) paperSearchError.textContent = '';
             // Filtreleri topla
             const filters = collectFilters();
-            paperSearchLoading.style.display = 'block';
-            try {
-                const openAlexUrl = buildOpenAlexUrl(paperSearchInput.value.trim(), filters);
-                const resp = await fetch(openAlexUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'akademikara-app/1.0'
-                    }
-                });
-                if (!resp.ok) throw new Error(await resp.text());
-                const data = await resp.json();
-                if (!data.results || data.results.length === 0) {
-                    paperSearchResult.innerHTML = '<div class="error-message">Makale bulunamadı.</div>';
-                } else {
-                    paperSearchResult.innerHTML = renderPaperSearchResults(data.results);
-                }
-            } catch (err) {
-                paperSearchResult.innerHTML = `<div class='error-message'>Makaleler alınırken hata oluştu: ${err.message}</div>`;
-            } finally {
-                paperSearchLoading.style.display = 'none';
-            }
+            paperCurrentPage = 1;
+            paperLastQuery = paperSearchInput.value.trim();
+            paperLastFilters = filters;
+            await fetchAndRenderPapers(paperLastQuery, paperLastFilters, paperCurrentPage);
         });
     }
+
+    async function fetchAndRenderPapers(query, filters, page) {
+        paperSearchLoading.style.display = 'block';
+        try {
+            let url = buildOpenAlexUrlWithPage(query, filters, page);
+            const resp = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'akademikara-app/1.0'
+                }
+            });
+            if (!resp.ok) throw new Error(await resp.text());
+            const data = await resp.json();
+            paperTotalCount = data.meta && data.meta.count ? data.meta.count : 0;
+            paperTotalPages = Math.ceil(paperTotalCount / 10);
+            if (!data.results || data.results.length === 0) {
+                paperSearchResult.innerHTML = '<div class="error-message">Makale bulunamadı.</div>';
+            } else {
+                let paginationHtml = renderPaperPagination(page, paperTotalPages);
+                paperSearchResult.innerHTML =
+                    paginationHtml +
+                    renderPaperSearchResults(data.results) +
+                    paginationHtml;
+            }
+        } catch (err) {
+            paperSearchResult.innerHTML = `<div class='error-message'>Makaleler alınırken hata oluştu: ${err.message}</div>`;
+        } finally {
+            paperSearchLoading.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('pagination-btn')) {
+            const page = parseInt(e.target.getAttribute('data-page'), 10);
+            if (!isNaN(page)) {
+                // Makale arama sayfalama
+                if (page !== paperCurrentPage && paperLastQuery) {
+                    paperCurrentPage = page;
+                    fetchAndRenderPapers(paperLastQuery, paperLastFilters, paperCurrentPage);
+                }
+                // Yazar arama sayfalama
+                if (page !== authorCurrentPage && authorLastQuery) {
+                    authorCurrentPage = page;
+                    fetchAndRenderAuthors(authorLastQuery, authorLastFilters, authorLastSort, authorCurrentPage);
+                }
+            }
+        }
+    });
     // Otomatik arama tetikleyici
     function debounce(func, wait) {
         let timeout;
@@ -466,6 +887,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function triggerAutoSearch() {
         if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
             paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+        if (authorSearchInput && authorSearchInput.value.trim().length > 0) {
+            authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
         }
     }
     const debouncedAutoSearch = debounce(triggerAutoSearch, 400);
@@ -568,14 +992,22 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Added version filter:', filters.version);
         }
         
-        // Atıf sayısı aralığı
-        if (filters.citedByCountMin !== undefined && filters.citedByCountMin !== '') {
-            filterList.push(`cited_by_count:>=${filters.citedByCountMin}`);
-            console.log('Added cited_by_count min filter:', filters.citedByCountMin);
-        }
-        if (filters.citedByCountMax !== undefined && filters.citedByCountMax !== '') {
-            filterList.push(`cited_by_count:<=${filters.citedByCountMax}`);
-            console.log('Added cited_by_count max filter:', filters.citedByCountMax);
+        // Atıf sayısı aralığı - OpenAlex API range query formatı
+        const minCited = filters.citedByCountMin !== undefined && filters.citedByCountMin !== '' ? parseInt(filters.citedByCountMin) : null;
+        const maxCited = filters.citedByCountMax !== undefined && filters.citedByCountMax !== '' ? parseInt(filters.citedByCountMax) : null;
+        
+        if (minCited !== null && maxCited !== null && !isNaN(minCited) && !isNaN(maxCited) && minCited >= 0 && maxCited >= 0) {
+            // Hem min hem max varsa: min-max formatı
+            filterList.push(`cited_by_count:${minCited}-${maxCited}`);
+            console.log('Added cited_by_count range filter:', `${minCited}-${maxCited}`);
+        } else if (minCited !== null && !isNaN(minCited) && minCited >= 0) {
+            // Sadece min varsa: min- formatı
+            filterList.push(`cited_by_count:${minCited}-`);
+            console.log('Added cited_by_count min filter:', `${minCited}-`);
+        } else if (maxCited !== null && !isNaN(maxCited) && maxCited >= 0) {
+            // Sadece max varsa: -max formatı
+            filterList.push(`cited_by_count:-${maxCited}`);
+            console.log('Added cited_by_count max filter:', `-${maxCited}`);
         }
         
         // Filtreleri ekle
@@ -711,7 +1143,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filtreleri temizleme butonu
     const clearFiltersBtn = document.getElementById('clear-filters');
     if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', clearFilters);
+        clearFiltersBtn.addEventListener('click', function() {
+            clearFilters();
+            // Eğer arama kutusunda bir değer varsa otomatik arama tetikle
+            if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
+                paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        });
+    }
+
+    // Yazar filtrelerini temizleme fonksiyonu
+    function clearAuthorFilters() {
+        document.getElementById('author-country').value = '';
+        document.getElementById('author-orcid').value = '';
+        document.getElementById('author-cited-min').value = '';
+        document.getElementById('author-cited-max').value = '';
+        document.getElementById('author-works-min').value = '';
+        document.getElementById('author-works-max').value = '';
+        document.getElementById('author-hindex-min').value = '';
+        document.getElementById('author-hindex-max').value = '';
+        document.getElementById('author-i10-min').value = '';
+        document.getElementById('author-i10-max').value = '';
+        document.getElementById('author-concept').value = '';
+        document.getElementById('author-has-orcid').value = '';
+        document.getElementById('author-sort').value = 'relevance';
+    }
+
+    // Yazar filtrelerini temizleme butonu
+    const clearAuthorFiltersBtn = document.getElementById('clear-author-filters');
+    if (clearAuthorFiltersBtn) {
+        clearAuthorFiltersBtn.addEventListener('click', function() {
+            clearAuthorFilters();
+            // Eğer arama kutusunda bir değer varsa otomatik arama tetikle
+            if (authorSearchInput && authorSearchInput.value.trim().length > 0) {
+                authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        });
     }
 
     // Gelişmiş filtreler aç/kapa (yeni panel için)
@@ -743,6 +1210,26 @@ document.addEventListener('DOMContentLoaded', () => {
         openDrawerBtn.addEventListener('click', openDrawer);
         closeDrawerBtn.addEventListener('click', closeDrawer);
         filtersDrawerOverlay.addEventListener('click', closeDrawer);
+    }
+
+    // Yazar filtreleri drawer işlevselliği
+    const openAuthorDrawerBtn = document.getElementById('open-author-filters-drawer');
+    const closeAuthorDrawerBtn = document.getElementById('close-author-filters-drawer');
+    const authorFiltersDrawer = document.getElementById('author-filters-drawer');
+    const authorFiltersDrawerOverlay = document.getElementById('author-filters-drawer-overlay');
+
+    function openAuthorDrawer() {
+        authorFiltersDrawer.classList.add('active');
+        authorFiltersDrawerOverlay.classList.add('active');
+    }
+    function closeAuthorDrawer() {
+        authorFiltersDrawer.classList.remove('active');
+        authorFiltersDrawerOverlay.classList.remove('active');
+    }
+    if (openAuthorDrawerBtn && closeAuthorDrawerBtn && authorFiltersDrawer && authorFiltersDrawerOverlay) {
+        openAuthorDrawerBtn.addEventListener('click', openAuthorDrawer);
+        closeAuthorDrawerBtn.addEventListener('click', closeAuthorDrawer);
+        authorFiltersDrawerOverlay.addEventListener('click', closeAuthorDrawer);
     }
 
     // Profil yükleme fonksiyonu
@@ -816,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPaperSearchResults(papers) {
-        const count = papers && papers.length ? papers.length : 0;
+        const count = paperTotalCount || (papers && papers.length ? papers.length : 0);
         const countHtml = `<div class='search-result-count'><span><b>${count}</b></span> <span>makale bulundu</span></div>`;
         // Sonuç sayısını arama barının altındaki kutuya yaz
         const countDiv = document.getElementById('search-result-count');
@@ -827,33 +1314,134 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<div class='papers-list'>${papers.map(renderPaperCard).join('')}</div>`;
     }
 
-    // Custom dropdown (result-count) işlevselliği
-    const resultCountBtn = document.getElementById('result-count-btn');
-    const resultCountList = document.getElementById('result-count-list');
-    const resultCountInput = document.getElementById('result-count');
-    if (resultCountBtn && resultCountList && resultCountInput) {
-        resultCountBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const isOpen = resultCountList.style.display === 'block';
-            resultCountList.style.display = isOpen ? 'none' : 'block';
+    // --- AUTOCOMPLETE ---
+    let authorAutocompleteBox;
+    let authorAutocompleteResults = [];
+    let authorAutocompleteSelected = -1;
+
+    function createAuthorAutocompleteBox() {
+        if (!authorAutocompleteBox) {
+            authorAutocompleteBox = document.createElement('div');
+            authorAutocompleteBox.className = 'autocomplete-box';
+            authorAutocompleteBox.style.position = 'absolute';
+            authorAutocompleteBox.style.zIndex = 1000;
+            authorAutocompleteBox.style.minWidth = authorSearchInput.offsetWidth + 'px';
+            authorSearchInput.parentNode.appendChild(authorAutocompleteBox);
+        }
+        authorAutocompleteBox.innerHTML = '';
+        authorAutocompleteBox.style.display = 'none';
+    }
+
+    function positionAuthorAutocompleteBox() {
+        if (!authorAutocompleteBox) return;
+        const rect = authorSearchInput.getBoundingClientRect();
+        authorAutocompleteBox.style.top = (authorSearchInput.offsetTop + authorSearchInput.offsetHeight) + 'px';
+        authorAutocompleteBox.style.left = authorSearchInput.offsetLeft + 'px';
+        authorAutocompleteBox.style.minWidth = authorSearchInput.offsetWidth + 'px';
+    }
+
+    async function fetchAuthorAutocomplete(query) {
+        const url = `https://api.openalex.org/autocomplete/authors?q=${encodeURIComponent(query)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return data.results || [];
+    }
+
+    function renderAuthorAutocomplete(results) {
+        if (!authorAutocompleteBox) createAuthorAutocompleteBox();
+        if (!results || results.length === 0) {
+            authorAutocompleteBox.style.display = 'none';
+            return;
+        }
+        authorAutocompleteBox.innerHTML = results.map((item, idx) => `
+            <div class='autocomplete-item${idx === authorAutocompleteSelected ? ' selected' : ''}' data-idx='${idx}'>
+                <span class='autocomplete-name'>${escapeHtml(item.display_name)}</span>
+                ${item.hint ? `<span class='autocomplete-hint'>${escapeHtml(item.hint)}</span>` : ''}
+            </div>
+        `).join('');
+        authorAutocompleteBox.style.display = 'block';
+        positionAuthorAutocompleteBox();
+    }
+
+    function clearAuthorAutocomplete() {
+        if (authorAutocompleteBox) {
+            authorAutocompleteBox.innerHTML = '';
+            authorAutocompleteBox.style.display = 'none';
+        }
+        authorAutocompleteResults = [];
+        authorAutocompleteSelected = -1;
+    }
+
+    if (authorSearchInput) {
+        createAuthorAutocompleteBox();
+        authorSearchInput.addEventListener('input', async function(e) {
+            const val = authorSearchInput.value.trim();
+            if (val.length < 2) {
+                clearAuthorAutocomplete();
+                return;
+            }
+            try {
+                const results = await fetchAuthorAutocomplete(val);
+                authorAutocompleteResults = results;
+                authorAutocompleteSelected = -1;
+                renderAuthorAutocomplete(results);
+            } catch {
+                clearAuthorAutocomplete();
+            }
         });
-        resultCountList.querySelectorAll('li').forEach(function(item) {
-            item.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const value = item.getAttribute('data-value');
-                resultCountBtn.textContent = item.textContent;
-                resultCountInput.value = value;
-                resultCountList.style.display = 'none';
-                // Aktif class
-                resultCountList.querySelectorAll('li').forEach(li => li.classList.remove('active'));
-                item.classList.add('active');
-                // Sonuç sayısı değişince dinamik arama tetikle
-                if (typeof debouncedAutoSearch === 'function') debouncedAutoSearch();
-            });
+        authorSearchInput.addEventListener('keydown', function(e) {
+            if (!authorAutocompleteResults.length || !authorAutocompleteBox || authorAutocompleteBox.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                authorAutocompleteSelected = (authorAutocompleteSelected + 1) % authorAutocompleteResults.length;
+                renderAuthorAutocomplete(authorAutocompleteResults);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                authorAutocompleteSelected = (authorAutocompleteSelected - 1 + authorAutocompleteResults.length) % authorAutocompleteResults.length;
+                renderAuthorAutocomplete(authorAutocompleteResults);
+            } else if (e.key === 'Enter') {
+                if (authorAutocompleteSelected >= 0 && authorAutocompleteResults[authorAutocompleteSelected]) {
+                    e.preventDefault();
+                    authorSearchInput.value = authorAutocompleteResults[authorAutocompleteSelected].display_name;
+                    clearAuthorAutocomplete();
+                    // Otomatik arama tetikle
+                    if (authorSearchForm) authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            } else if (e.key === 'Escape') {
+                clearAuthorAutocomplete();
+            }
         });
-        // Dışarı tıklanınca menüyü kapat
         document.addEventListener('click', function(e) {
-            resultCountList.style.display = 'none';
+            if (e.target !== authorSearchInput && (!authorAutocompleteBox || !authorAutocompleteBox.contains(e.target))) {
+                clearAuthorAutocomplete();
+            }
+        });
+        authorAutocompleteBox.addEventListener('mousedown', function(e) {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const idx = parseInt(item.getAttribute('data-idx'), 10);
+                if (authorAutocompleteResults[idx]) {
+                    authorSearchInput.value = authorAutocompleteResults[idx].display_name;
+                    clearAuthorAutocomplete();
+                    if (authorSearchForm) authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            }
+        });
+    }
+
+    // Sayfa yüklendiğinde ve arama kutusu boşken kutuyu gizle
+    const authorSearchResultCount = document.getElementById('author-search-result-count');
+    if (authorSearchResultCount) {
+        authorSearchResultCount.style.display = 'none';
+        authorSearchResultCount.innerHTML = '';
+    }
+    if (authorSearchInput) {
+        authorSearchInput.addEventListener('input', function() {
+            if (authorSearchInput.value.trim() === '' && authorSearchResultCount) {
+                authorSearchResultCount.style.display = 'none';
+                authorSearchResultCount.innerHTML = '';
+            }
         });
     }
 }); 
