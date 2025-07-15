@@ -1,5 +1,21 @@
 // Akademikara - Modern PDF Analiz & Atıf Bulucu
 
+// HTML injection'a karşı güvenli metin için global fonksiyon
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Yıllara göre yayın/atıf tablosu fonksiyonu (GLOBAL)
+function renderCountsByYearTable(counts) {
+    if (!Array.isArray(counts) || counts.length === 0) {
+        return `<div class='author-counts-table-wrap'><table class='author-counts-table'><thead><tr><th>Yıl</th><th>Yayın</th><th>Atıf</th></tr></thead><tbody><tr><td colspan='3' style='text-align:center;color:#888;'>Veri yok</td></tr></tbody></table></div>`;
+    }
+    let rows = counts.map(c => `<tr><td>${c.year}</td><td>${c.works_count}</td><td>${c.cited_by_count}</td></tr>`).join('');
+    return `<div class='author-counts-table-wrap'><table class='author-counts-table'><thead><tr><th>Yıl</th><th>Yayın</th><th>Atıf</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Sekme geçişi
     const navBtns = document.querySelectorAll('.nav-btn');
@@ -394,7 +410,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildOpenAlexAuthorUrl(query, filters, sort, page = 1) {
-        let url = `https://api.openalex.org/authors?search=${encodeURIComponent(query)}&per_page=10&page=${page}&select=id,display_name,display_name_alternatives,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,affiliations,x_concepts,ids,works_api_url,counts_by_year`;
+        // per_page=12 olacak şekilde güncellendi
+        let url = `https://api.openalex.org/authors?search=${encodeURIComponent(query)}&per_page=12&page=${page}&select=id,display_name,display_name_alternatives,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,affiliations,x_concepts,ids,works_api_url,counts_by_year`;
         
         if (filters && filters.length > 0) {
             // Tüm filtreleri tek bir filter parametresinde birleştir
@@ -455,22 +472,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const url = buildOpenAlexAuthorUrl(query, filters, sort, page);
             console.log('API çağrısı yapılıyor:', url);
-            
             const resp = await fetch(url);
             console.log('API yanıt durumu:', resp.status, resp.statusText);
-            
             if (!resp.ok) {
                 const errorText = await resp.text();
                 console.error('API hata detayı:', errorText);
                 throw new Error(`OpenAlex API hatası (${resp.status}): ${errorText}`);
             }
-            
             const data = await resp.json();
             console.log('API yanıt verisi:', data);
-            
             authorTotalCount = data.meta && data.meta.count ? data.meta.count : 0;
-            authorTotalPages = Math.ceil(authorTotalCount / 10);
-            
+            authorTotalPages = Math.ceil(authorTotalCount / 12); // 12'ye güncellendi
             if (!data.results || data.results.length === 0) {
                 authorSearchResult.innerHTML = '<div class="error-message">Yazar bulunamadı.</div>';
             } else {
@@ -532,11 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const twitter = ids.twitter ? `<a href='https://twitter.com/${ids.twitter}' target='_blank' title='Twitter'><span style='font-size:1.1em;'>🐦</span> Twitter</a>` : '';
         const wikipedia = ids.wikipedia ? `<a href='${ids.wikipedia}' target='_blank' title='Wikipedia'><span style='font-size:1.1em;'>📖</span> Wikipedia</a>` : '';
         const altNames = (author.display_name_alternatives || []).length > 0 ? `<div class='author-alt-names'><strong>Alternatif İsimler:</strong> ${author.display_name_alternatives.map(escapeHtml).join(', ')}</div>` : '';
-        const worksApi = author.works_api_url ? `<a href='${author.works_api_url}' target='_blank' class='author-works-link'>Tüm yayınlarını OpenAlex'te gör</a>` : '';
-        const countsByYear = Array.isArray(author.counts_by_year) && author.counts_by_year.length > 0 ? renderCountsByYearTable(author.counts_by_year) : '';
         return `
             <div class="paper-card author-card">
-                <div class="paper-title">${escapeHtml(author.display_name)}</div>
+                <div class="paper-title"><a href="#" class="author-detail-link" data-author-id="${author.id}">${escapeHtml(author.display_name)}</a></div>
                 ${altNames}
                 <div class="paper-meta">
                     ${orcid}
@@ -550,20 +560,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${wikipedia}
                 </div>
                 ${insts ? `<div class='paper-meta'><span>🏢 Son Kurum: ${insts}</span></div>` : ''}
-                ${affiliations ? `<div class='paper-meta'><span>🏢 Kurum Geçmişi: ${affiliations}</span></div>` : ''}
                 ${concepts ? `<div class='author-concepts-row'>${concepts}</div>` : ''}
-                ${countsByYear}
-                ${worksApi ? `<div class='paper-meta'>${worksApi}</div>` : ''}
             </div>
         `;
-    }
-
-    function renderCountsByYearTable(counts) {
-        if (!Array.isArray(counts) || counts.length === 0) {
-            return `<div class='author-counts-table-wrap'><table class='author-counts-table'><thead><tr><th>Yıl</th><th>Yayın</th><th>Atıf</th></tr></thead><tbody><tr><td colspan='3' style='text-align:center;color:#888;'>Veri yok</td></tr></tbody></table></div>`;
-        }
-        let rows = counts.map(c => `<tr><td>${c.year}</td><td>${c.works_count}</td><td>${c.cited_by_count}</td></tr>`).join('');
-        return `<div class='author-counts-table-wrap'><table class='author-counts-table'><thead><tr><th>Yıl</th><th>Yayın</th><th>Atıf</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
 
     // Kurum Ara
@@ -649,20 +648,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         institutionSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                clearInstitutionAutocomplete();
+            }
             if (!institutionAutocompleteResults.length || !institutionAutocompleteBox || institutionAutocompleteBox.style.display === 'none') return;
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 institutionAutocompleteSelected = (institutionAutocompleteSelected + 1) % institutionAutocompleteResults.length;
                 renderInstitutionAutocomplete(institutionAutocompleteResults);
+                // Otomatik kaydırma
+                const items = institutionAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[institutionAutocompleteSelected]) {
+                    items[institutionAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 institutionAutocompleteSelected = (institutionAutocompleteSelected - 1 + institutionAutocompleteResults.length) % institutionAutocompleteResults.length;
                 renderInstitutionAutocomplete(institutionAutocompleteResults);
+                // Otomatik kaydırma
+                const items = institutionAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[institutionAutocompleteSelected]) {
+                    items[institutionAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
             } else if (e.key === 'Enter') {
                 if (institutionAutocompleteSelected >= 0 && institutionAutocompleteResults[institutionAutocompleteSelected]) {
                     e.preventDefault();
                     institutionSearchInput.value = institutionAutocompleteResults[institutionAutocompleteSelected].display_name;
-                    clearInstitutionAutocomplete();
                     if (institutionSearchForm) institutionSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
                 }
             } else if (e.key === 'Escape') {
@@ -721,50 +732,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderInstitutionCard(inst) {
-        const ror = inst.ror ? `<a href='${inst.ror}' target='_blank' title='ROR'><span style='font-size:1.1em;'>🏢</span> ROR</a>` : '';
+        const country = inst.country_code ? `<span title='Ülke'>🌍 ${inst.country_code.toUpperCase()}</span>` : '';
+        const type = inst.type ? `<span title='Tür'>🏷️ ${inst.type}</span>` : '';
         const works = typeof inst.works_count === 'number' ? `<span title='Toplam Yayın'>📄 ${inst.works_count}</span>` : '';
         const cited = typeof inst.cited_by_count === 'number' ? `<span title='Toplam Atıf'>⭐ ${inst.cited_by_count}</span>` : '';
-        const hindex = inst.summary_stats && typeof inst.summary_stats.h_index === 'number' ? `<span title='h-index'>h-index: ${inst.summary_stats.h_index}</span>` : '';
-        const i10 = inst.summary_stats && typeof inst.summary_stats.i10_index === 'number' ? `<span title='i10-index'>i10: ${inst.summary_stats.i10_index}</span>` : '';
-        const meanCited = inst.summary_stats && typeof inst.summary_stats['2yr_mean_citedness'] === 'number' ? `<span title='2Y Atıf Ort.'>2Y Atıf Ort: ${inst.summary_stats['2yr_mean_citedness'].toFixed(2)}</span>` : '';
-        const type = inst.type ? `<span title='Tür'>🏷️ ${inst.type}</span>` : '';
-        const country = inst.country_code ? `<span title='Ülke'>🌍 ${inst.country_code.toUpperCase()}</span>` : '';
-        // Alanlar (x_concepts) sade ve tek satırda, max 3 göster, fazlası için +N alan badge
-        let concepts = '';
-        if (inst.x_concepts && inst.x_concepts.length > 0) {
-            const shown = inst.x_concepts.slice(0, 3).map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`);
-            const more = inst.x_concepts.length > 3 ? `<span class='concept-badge concept-badge-more'>+${inst.x_concepts.length - 3} alan</span>` : '';
-            concepts = shown.join(' ') + more;
-        }
-        const roles = (inst.roles || []).map(r => `<span class='pdf-keyword' title='Rol: ${r.role}'>${escapeHtml(r.role)} (${r.works_count})</span>`).join(' ');
-        const repos = (inst.repositories || []).map(r => `<a href='${r.id}' target='_blank'>${escapeHtml(r.display_name)}</a>`).join(', ');
-        const worksApi = inst.works_api_url ? `<a href='${inst.works_api_url}' target='_blank' class='author-works-link'>Tüm yayınlarını OpenAlex'te gör</a>` : '';
-        const ids = inst.ids || {};
-        const wikipedia = ids.wikipedia ? `<a href='${ids.wikipedia}' target='_blank' title='Wikipedia'><span style='font-size:1.1em;'>📖</span> Wikipedia</a>` : '';
-        const wikidata = ids.wikidata ? `<a href='${ids.wikidata}' target='_blank' title='Wikidata'><span style='font-size:1.1em;'>🗂️</span> Wikidata</a>` : '';
-        const mag = ids.mag ? `<a href='https://www.microsoft.com/en-us/research/project/microsoft-academic-graph/' target='_blank' title='MAG'><span style='font-size:1.1em;'>🧩</span> MAG</a>` : '';
         const image = inst.image_thumbnail_url ? `<img src='${inst.image_thumbnail_url}' alt='Kurum Logosu' class='institution-logo' style='width:48px;height:48px;border-radius:50%;margin-bottom:0.7em;'>` : '';
         return `
             <div class="paper-card institution-card">
                 ${image}
-                <div class="paper-title">${escapeHtml(inst.display_name)}</div>
+                <div class="paper-title"><a href="#" class="institution-detail-link" data-institution-id="${inst.id}">${escapeHtml(inst.display_name)}</a></div>
                 <div class="paper-meta">
-                    ${ror}
-                    ${type}
                     ${country}
+                    ${type}
                     ${works}
                     ${cited}
-                    ${hindex}
-                    ${i10}
-                    ${meanCited}
-                    ${wikipedia}
-                    ${wikidata}
-                    ${mag}
                 </div>
-                ${concepts ? `<div class='author-concepts-row'>${concepts}</div>` : ''}
-                ${roles ? `<div class='paper-meta'><strong>Roller:</strong> ${roles}</div>` : ''}
-                ${repos ? `<div class='paper-meta'><strong>Repository:</strong> ${repos}</div>` : ''}
-                ${worksApi ? `<div class='paper-meta'>${worksApi}</div>` : ''}
             </div>
         `;
     }
@@ -803,7 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buildOpenAlexUrlWithPage(query, filters, page) {
         let url = buildOpenAlexUrl(query, filters);
-        url = url.replace(/&per_page=\d+/, `&per_page=10`);
+        url = url.replace(/&per_page=\d+/, `&per_page=12`);
         if (url.includes('&page=')) {
             url = url.replace(/&page=\d+/, `&page=${page}`);
         } else {
@@ -841,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!resp.ok) throw new Error(await resp.text());
             const data = await resp.json();
             paperTotalCount = data.meta && data.meta.count ? data.meta.count : 0;
-            paperTotalPages = Math.ceil(paperTotalCount / 10);
+            paperTotalPages = Math.ceil(paperTotalCount / 12);
             if (!data.results || data.results.length === 0) {
                 paperSearchResult.innerHTML = '<div class="error-message">Makale bulunamadı.</div>';
             } else {
@@ -876,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     // Otomatik arama tetikleyici
+    let lastAuthorSearchSubmit = 0;
     function debounce(func, wait) {
         let timeout;
         return function(...args) {
@@ -884,19 +867,40 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     const autoSearchInputs = document.querySelectorAll('.auto-search');
-    function triggerAutoSearch() {
+    function triggerAutoSearch(e) {
+        // Son 500ms içinde submit olduysa tekrar tetikleme
+        if (Date.now() - lastAuthorSearchSubmit < 500) return;
         if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
             paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
         }
-        if (authorSearchInput && authorSearchInput.value.trim().length > 0) {
-            authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
-        }
+        // authorSearchForm için otomatik submit kaldırıldı
+        // if (authorSearchInput && authorSearchInput.value.trim().length > 0) {
+        //     authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        // }
     }
     const debouncedAutoSearch = debounce(triggerAutoSearch, 400);
     autoSearchInputs.forEach(el => {
         el.addEventListener('input', debouncedAutoSearch);
         el.addEventListener('change', debouncedAutoSearch);
     });
+    // Form submit edildiğinde zaman damgası bırak
+    if (authorSearchForm) {
+        authorSearchForm.addEventListener('submit', async (e) => {
+            lastAuthorSearchSubmit = Date.now();
+            e.preventDefault();
+            if (!authorSearchInput.value.trim()) return;
+            authorSearchError.textContent = '';
+            authorSearchResult.innerHTML = '';
+            // Filtreleri topla
+            const filters = collectAuthorFilters();
+            const sort = authorSortInput && authorSortInput.value ? authorSortInput.value : undefined;
+            authorCurrentPage = 1;
+            authorLastQuery = authorSearchInput.value.trim();
+            authorLastFilters = filters;
+            authorLastSort = sort;
+            await fetchAndRenderAuthors(authorLastQuery, authorLastFilters, authorLastSort, authorCurrentPage);
+        });
+    }
 
     // OpenAlex URL'ini oluşturan fonksiyon
     function buildOpenAlexUrl(query, filters) {
@@ -1263,12 +1267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     function renderPaperCard(paper) {
         const allAuthors = (paper.authorships || []).map(a => escapeHtml(a.author.display_name));
         let authors = '';
@@ -1287,9 +1285,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const doi = paper.doi ? `<a href="${paper.doi}" target="_blank" title="DOI"><span style='font-size:1.1em;'>🔗</span> DOI</a>` : '';
         const year = paper.publication_year ? `<span title='Yayın Yılı'>📅 ${paper.publication_year}</span>` : '';
         const cited = typeof paper.cited_by_count === 'number' ? `<span title='Atıf Sayısı'>⭐ ${paper.cited_by_count}</span>` : '';
+        // Başlık tıklanabilir ve data-work-id ile
         return `
             <div class="paper-card">
-                <div class="paper-title">${escapeHtml(paper.title)}</div>
+                <div class="paper-title"><a href="#" class="work-detail-link" data-work-id="${paper.id}">${escapeHtml(paper.title)}</a></div>
                 <div class="paper-meta">
                     ${authors ? `<span>👤 ${authors}</span>` : ''}
                     ${venue ? `<span>📚 ${venue}</span>` : ''}
@@ -1373,6 +1372,8 @@ document.addEventListener('DOMContentLoaded', () => {
         authorAutocompleteSelected = -1;
     }
 
+    let autocompleteSelectedByMouse = false;
+
     if (authorSearchInput) {
         createAuthorAutocompleteBox();
         authorSearchInput.addEventListener('input', async function(e) {
@@ -1391,22 +1392,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         authorSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                clearAuthorAutocomplete();
+            }
             if (!authorAutocompleteResults.length || !authorAutocompleteBox || authorAutocompleteBox.style.display === 'none') return;
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 authorAutocompleteSelected = (authorAutocompleteSelected + 1) % authorAutocompleteResults.length;
                 renderAuthorAutocomplete(authorAutocompleteResults);
+                // Otomatik kaydırma
+                const items = authorAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[authorAutocompleteSelected]) {
+                    items[authorAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 authorAutocompleteSelected = (authorAutocompleteSelected - 1 + authorAutocompleteResults.length) % authorAutocompleteResults.length;
                 renderAuthorAutocomplete(authorAutocompleteResults);
+                // Otomatik kaydırma
+                const items = authorAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[authorAutocompleteSelected]) {
+                    items[authorAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
             } else if (e.key === 'Enter') {
                 if (authorAutocompleteSelected >= 0 && authorAutocompleteResults[authorAutocompleteSelected]) {
                     e.preventDefault();
                     authorSearchInput.value = authorAutocompleteResults[authorAutocompleteSelected].display_name;
                     clearAuthorAutocomplete();
-                    // Otomatik arama tetikle
-                    if (authorSearchForm) authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    // Submit tetiklenmeyecek! Sadece input'a yazacak.
                 }
             } else if (e.key === 'Escape') {
                 clearAuthorAutocomplete();
@@ -1444,4 +1457,402 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Modal açma/kapama
+    const workModal = document.getElementById('work-modal');
+    const workModalBody = document.getElementById('work-modal-body');
+    const workModalClose = document.getElementById('work-modal-close');
+    function openWorkModal() {
+        workModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function closeWorkModal() {
+        workModal.style.display = 'none';
+        document.body.style.overflow = '';
+        workModalBody.innerHTML = '';
+    }
+    if (workModalClose) workModalClose.addEventListener('click', closeWorkModal);
+    if (workModal) workModal.addEventListener('click', function(e) {
+        if (e.target === workModal) closeWorkModal();
+    });
+    // Makale başlığına tıklama
+    document.body.addEventListener('click', async function(e) {
+        const link = e.target.closest('.work-detail-link');
+        if (link) {
+            e.preventDefault();
+            const workId = link.getAttribute('data-work-id');
+            if (!workId) return;
+            workModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
+            openWorkModal();
+            try {
+                // OpenAlex ID genelde https://openalex.org/Wxxxx formatında, sadece ID kısmını al
+                let id = workId;
+                if (id.startsWith('https://openalex.org/')) id = id.split('/').pop();
+                const resp = await fetch(`https://api.openalex.org/works/${id}`);
+                if (!resp.ok) throw new Error('Detaylar alınamadı');
+                const work = await resp.json();
+                workModalBody.innerHTML = renderWorkDetailModal(work);
+            } catch (err) {
+                workModalBody.innerHTML = `<div class='error-message'>Detaylar alınırken hata oluştu: ${err.message}</div>`;
+            }
+        }
+    });
+
+    // Yazar detay modalı açma/kapama ve detay çekme
+    const authorModal = document.getElementById('author-modal');
+    const authorModalBody = document.getElementById('author-modal-body');
+    const authorModalClose = document.getElementById('author-modal-close');
+    function openAuthorModal() {
+        authorModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function closeAuthorModal() {
+        authorModal.style.display = 'none';
+        document.body.style.overflow = '';
+        authorModalBody.innerHTML = '';
+    }
+    if (authorModalClose) authorModalClose.addEventListener('click', closeAuthorModal);
+    if (authorModal) authorModal.addEventListener('click', function(e) {
+        if (e.target === authorModal) closeAuthorModal();
+    });
+    // Yazar ismine tıklama
+    document.body.addEventListener('click', async function(e) {
+        const link = e.target.closest('.author-detail-link');
+        if (link) {
+            e.preventDefault();
+            const authorId = link.getAttribute('data-author-id');
+            if (!authorId) return;
+            authorModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
+            openAuthorModal();
+            try {
+                let id = authorId;
+                if (id.startsWith('https://openalex.org/')) id = id.split('/').pop();
+                const resp = await fetch(`https://api.openalex.org/authors/${id}`);
+                if (!resp.ok) throw new Error('Detaylar alınamadı');
+                const author = await resp.json();
+                authorModalBody.innerHTML = renderAuthorDetailModal(author);
+            } catch (err) {
+                authorModalBody.innerHTML = `<div class='error-message'>Detaylar alınırken hata oluştu: ${err.message}</div>`;
+            }
+        }
+    });
+
+    // Kurum detay modalı açma/kapama ve detay çekme
+    const institutionModal = document.getElementById('institution-modal');
+    const institutionModalBody = document.getElementById('institution-modal-body');
+    const institutionModalClose = document.getElementById('institution-modal-close');
+    function openInstitutionModal() {
+        institutionModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function closeInstitutionModal() {
+        institutionModal.style.display = 'none';
+        document.body.style.overflow = '';
+        institutionModalBody.innerHTML = '';
+    }
+    if (institutionModalClose) institutionModalClose.addEventListener('click', closeInstitutionModal);
+    if (institutionModal) institutionModal.addEventListener('click', function(e) {
+        if (e.target === institutionModal) closeInstitutionModal();
+    });
+    // Kurum ismine tıklama
+    document.body.addEventListener('click', async function(e) {
+        const link = e.target.closest('.institution-detail-link');
+        if (link) {
+            e.preventDefault();
+            const institutionId = link.getAttribute('data-institution-id');
+            if (!institutionId) return;
+            institutionModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
+            openInstitutionModal();
+            try {
+                let id = institutionId;
+                if (id.startsWith('https://openalex.org/')) id = id.split('/').pop();
+                const resp = await fetch(`https://api.openalex.org/institutions/${id}`);
+                if (!resp.ok) throw new Error('Detaylar alınamadı');
+                const institution = await resp.json();
+                institutionModalBody.innerHTML = renderInstitutionDetailModal(institution);
+            } catch (err) {
+                institutionModalBody.innerHTML = `<div class='error-message'>Detaylar alınırken hata oluştu: ${err.message}</div>`;
+            }
+        }
+    });
 }); 
+
+// Makale detay modalı render fonksiyonu
+function renderWorkDetailModal(work) {
+    let html = `<h2>${escapeHtml(work.title || work.display_name || '')}</h2>`;
+    // Yazarlar
+    if (Array.isArray(work.authorships) && work.authorships.length > 0) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Yazarlar:</span> <span class='work-modal-value'>` +
+            work.authorships.map(a => {
+                let author = escapeHtml(a.author?.display_name || a.raw_author_name || '');
+                if (a.author?.orcid) author += ` <a href='${a.author.orcid}' target='_blank' title='ORCID' style='font-size:1.1em;vertical-align:middle;'>🆔</a>`;
+                if (Array.isArray(a.institutions) && a.institutions.length > 0) {
+                    author += ` <span class='author-institution'>(${a.institutions.map(i => escapeHtml(i.display_name)).join(', ')}`;
+                    if (a.institutions.some(i => i.country_code)) {
+                        const countries = a.institutions.map(i => i.country_code).filter(Boolean).join(', ');
+                        author += countries ? `, ${countries}` : '';
+                    }
+                    author += ")</span>";
+                }
+                return author;
+            }).join(', ') + `</span></div>`;
+    }
+    // Makale türü
+    if (work.type) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Tür:</span> <span class='work-modal-value'>${escapeHtml(work.type)}</span></div>`;
+    }
+    // Dergi/kitap/proceedings ve yayıncı
+    if (work.primary_location && work.primary_location.source) {
+        if (work.primary_location.source.display_name) {
+            html += `<div class='work-modal-section'><span class='work-modal-label'>Kaynak:</span> <span class='work-modal-value'>${escapeHtml(work.primary_location.source.display_name)}</span></div>`;
+        }
+        if (work.primary_location.source.publisher) {
+            html += `<div class='work-modal-section'><span class='work-modal-label'>Yayıncı:</span> <span class='work-modal-value'>${escapeHtml(work.primary_location.source.publisher)}</span></div>`;
+        }
+        if (work.primary_location.source.country_code) {
+            html += `<div class='work-modal-section'><span class='work-modal-label'>Yayıncı Ülke:</span> <span class='work-modal-value'>${escapeHtml(work.primary_location.source.country_code)}</span></div>`;
+        }
+        if (work.primary_location.source.issn_l || (work.primary_location.source.issn && work.primary_location.source.issn.length > 0)) {
+            html += `<div class='work-modal-section'><span class='work-modal-label'>ISSN:</span> <span class='work-modal-value'>${escapeHtml(work.primary_location.source.issn_l || (work.primary_location.source.issn || []).join(', '))}</span></div>`;
+        }
+        if (work.primary_location.source.isbn && work.primary_location.source.isbn.length > 0) {
+            html += `<div class='work-modal-section'><span class='work-modal-label'>ISBN:</span> <span class='work-modal-value'>${escapeHtml(work.primary_location.source.isbn.join(', '))}</span></div>`;
+        }
+    }
+    // Dil
+    if (work.language) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Dil:</span> <span class='work-modal-value'>${escapeHtml(work.language)}</span></div>`;
+    }
+    // Yayın tarihi (hem yıl hem tam tarih)
+    if (work.publication_year || work.publication_date) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Yayın:</span> <span class='work-modal-value'>${work.publication_year ? work.publication_year : ''}${work.publication_date ? ' - ' + escapeHtml(work.publication_date) : ''}</span></div>`;
+    }
+    // Versiyon
+    if (work.version) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Versiyon:</span> <span class='work-modal-value'>${escapeHtml(work.version)}</span></div>`;
+    }
+    // Güncellenme tarihi
+    if (work.updated_date) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Güncellenme:</span> <span class='work-modal-value'>${escapeHtml(work.updated_date)}</span></div>`;
+    }
+    // DOI
+    if (work.doi) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>DOI:</span> <a href='${work.doi}' target='_blank'>${work.doi}</a></div>`;
+    }
+    // Açık erişim
+    if (work.open_access && work.open_access.is_oa) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Açık Erişim:</span> <a href='${work.open_access.oa_url}' target='_blank'>${work.open_access.oa_url}</a></div>`;
+    }
+    // Tam metin erişim kaynakları
+    if (work.open_access && Array.isArray(work.open_access.locations) && work.open_access.locations.length > 0) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Tam Metin Kaynakları:</span> <span class='work-modal-value'>` +
+            work.open_access.locations.map(loc => {
+                let label = loc.type ? escapeHtml(loc.type) : 'Kaynak';
+                let url = loc.url || loc.landing_page_url;
+                if (url) {
+                    return `<a href='${url}' target='_blank'>${label}</a>`;
+                } else {
+                    return label;
+                }
+            }).join(', ') + `</span></div>`;
+    }
+    // Atıf sayısı
+    if (typeof work.cited_by_count === 'number') {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Atıf:</span> <span class='work-modal-value'>${work.cited_by_count}</span></div>`;
+    }
+    // Referans verilen makale sayısı
+    if (Array.isArray(work.referenced_works)) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Referans:</span> <span class='work-modal-value'>${work.referenced_works.length}</span></div>`;
+    }
+    // Anahtar kelimeler ve skorları
+    if (Array.isArray(work.concepts) && work.concepts.length > 0) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Anahtar Kelimeler:</span></div><div class='work-modal-keywords'>` +
+            work.concepts.map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`).join('') + `</div>`;
+    }
+    // Özet (plain veya inverted index)
+    if (work.abstract) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Özet:</span><div class='work-modal-abstract'>${escapeHtml(work.abstract)}</div></div>`;
+    } else if (work.abstract_inverted_index) {
+        html += `<div class='work-modal-section'><span class='work-modal-label'>Özet:</span><div class='work-modal-abstract'>${renderOpenAlexAbstract(work.abstract_inverted_index)}</div></div>`;
+    }
+    // PDF veya tam metin
+    if (work.primary_location && work.primary_location.pdf_url) {
+        html += `<a href='${work.primary_location.pdf_url}' target='_blank' class='btn-primary'>PDF'yi Aç</a>`;
+    }
+    return html;
+}
+// OpenAlex abstract_inverted_index'i düz metne çeviren fonksiyon
+function renderOpenAlexAbstract(abstract_inverted_index) {
+    // Pozisyonlara göre kelimeleri sırala
+    const arr = [];
+    for (const [word, positions] of Object.entries(abstract_inverted_index)) {
+        positions.forEach(pos => { arr[pos] = word; });
+    }
+    return arr.join(' ');
+}
+// Yazar detay modalı render fonksiyonu
+function renderAuthorDetailModal(author) {
+    let html = `<h2>${escapeHtml(author.display_name || '')}</h2>`;
+    // ORCID
+    if (author.orcid) {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>ORCID:</span> <a href='${author.orcid}' target='_blank'>${author.orcid}</a></div>`;
+    }
+    // Alternatif isimler
+    if (Array.isArray(author.display_name_alternatives) && author.display_name_alternatives.length > 0) {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Alternatif İsimler:</span> <span class='author-modal-value'>${author.display_name_alternatives.map(escapeHtml).join(', ')}</span></div>`;
+    }
+    // Son kurum
+    if (Array.isArray(author.last_known_institutions) && author.last_known_institutions.length > 0) {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Son Kurum:</span> <span class='author-modal-value'>${author.last_known_institutions.map(i => escapeHtml(i.display_name)).join(', ')}</span></div>`;
+    }
+    // Ülke
+    if (Array.isArray(author.last_known_institutions) && author.last_known_institutions.length > 0) {
+        const countries = author.last_known_institutions.map(i => i.country_code).filter(Boolean).join(', ');
+        if (countries) {
+            html += `<div class='author-modal-section'><span class='author-modal-label'>Ülke:</span> <span class='author-modal-value'>${countries}</span></div>`;
+        }
+    }
+    // Yayın/atıf istatistikleri
+    if (typeof author.works_count === 'number') {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Toplam Yayın:</span> <span class='author-modal-value'>${author.works_count}</span></div>`;
+    }
+    if (typeof author.cited_by_count === 'number') {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Toplam Atıf:</span> <span class='author-modal-value'>${author.cited_by_count}</span></div>`;
+    }
+    if (author.summary_stats && typeof author.summary_stats.h_index === 'number') {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>h-index:</span> <span class='author-modal-value'>${author.summary_stats.h_index}</span></div>`;
+    }
+    if (author.summary_stats && typeof author.summary_stats.i10_index === 'number') {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>i10-index:</span> <span class='author-modal-value'>${author.summary_stats.i10_index}</span></div>`;
+    }
+    if (author.summary_stats && typeof author.summary_stats['2yr_mean_citedness'] === 'number') {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>2Y Atıf Ort:</span> <span class='author-modal-value'>${author.summary_stats['2yr_mean_citedness'].toFixed(2)}</span></div>`;
+    }
+    // Alanlar (konseptler)
+    if (Array.isArray(author.x_concepts) && author.x_concepts.length > 0) {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Alanlar:</span></div><div class='author-modal-keywords'>` +
+            author.x_concepts.map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`).join('') + `</div>`;
+    }
+    // Kurum geçmişi (yıllara göre tablo öncesine alındı)
+    if (Array.isArray(author.affiliations) && author.affiliations.length > 0) {
+        const affiliations = author.affiliations.map(a => {
+            const years = a.years && a.years.length > 0 ? ` (${a.years[0]}-${a.years[a.years.length-1]})` : '';
+            return a.institution && a.institution.display_name ? `${escapeHtml(a.institution.display_name)}${years}` : '';
+        }).filter(Boolean).join(', ');
+        if (affiliations) {
+            html += `<div class='author-modal-section'><span class='author-modal-label'>Kurum Geçmişi:</span> <span class='author-modal-value'>${affiliations}</span></div>`;
+        }
+    }
+    // Yıllara göre yayın/atıf tablosu
+    if (Array.isArray(author.counts_by_year) && author.counts_by_year.length > 0) {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Yıllara Göre Yayın/Atıf:</span></div>` + renderCountsByYearTable(author.counts_by_year);
+    }
+    // Sosyal/linkler
+    if (author.ids) {
+        let links = [];
+        if (author.ids.scopus) links.push(`<a href='${author.ids.scopus}' target='_blank'>Scopus</a>`);
+        if (author.ids.twitter) links.push(`<a href='https://twitter.com/${author.ids.twitter}' target='_blank'>Twitter</a>`);
+        if (author.ids.wikipedia) links.push(`<a href='${author.ids.wikipedia}' target='_blank'>Wikipedia</a>`);
+        if (links.length > 0) {
+            html += `<div class='author-modal-section'><span class='author-modal-label'>Linkler:</span> <span class='author-modal-value'>${links.join(' | ')}</span></div>`;
+        }
+    }
+    // Biyografi
+    if (author.bio) {
+        html += `<div class='author-modal-section'><span class='author-modal-label'>Biyografi:</span> <span class='author-modal-value'>${escapeHtml(author.bio)}</span></div>`;
+    }
+    return html;
+}
+
+// Kurum detay modalı render fonksiyonu
+function renderInstitutionDetailModal(institution) {
+    let html = `<h2>${escapeHtml(institution.display_name || '')}</h2>`;
+    
+    // Kurum logosu
+    if (institution.image_thumbnail_url) {
+        html += `<div class='institution-modal-logo'><img src='${institution.image_thumbnail_url}' alt='Kurum Logosu' style='width:80px;height:80px;border-radius:50%;margin-bottom:1rem;'></div>`;
+    }
+    
+    // ROR ID
+    if (institution.ror) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>ROR ID:</span> <a href='${institution.ror}' target='_blank'>${institution.ror}</a></div>`;
+    }
+    
+    // Alternatif isimler
+    if (Array.isArray(institution.display_name_alternatives) && institution.display_name_alternatives.length > 0) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Alternatif İsimler:</span> <span class='institution-modal-value'>${institution.display_name_alternatives.map(escapeHtml).join(', ')}</span></div>`;
+    }
+    
+    // Kurum türü
+    if (institution.type) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Tür:</span> <span class='institution-modal-value'>${escapeHtml(institution.type)}</span></div>`;
+    }
+    
+    // Ülke
+    if (institution.country_code) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Ülke:</span> <span class='institution-modal-value'>${institution.country_code.toUpperCase()}</span></div>`;
+    }
+    
+    // Şehir
+    if (institution.city) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Şehir:</span> <span class='institution-modal-value'>${escapeHtml(institution.city)}</span></div>`;
+    }
+    
+    // Bölge
+    if (institution.region) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Bölge:</span> <span class='institution-modal-value'>${escapeHtml(institution.region)}</span></div>`;
+    }
+    
+    // Yayın/atıf istatistikleri
+    if (typeof institution.works_count === 'number') {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Toplam Yayın:</span> <span class='institution-modal-value'>${institution.works_count.toLocaleString()}</span></div>`;
+    }
+    if (typeof institution.cited_by_count === 'number') {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Toplam Atıf:</span> <span class='institution-modal-value'>${institution.cited_by_count.toLocaleString()}</span></div>`;
+    }
+    if (institution.summary_stats && typeof institution.summary_stats.h_index === 'number') {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>h-index:</span> <span class='institution-modal-value'>${institution.summary_stats.h_index}</span></div>`;
+    }
+    if (institution.summary_stats && typeof institution.summary_stats.i10_index === 'number') {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>i10-index:</span> <span class='institution-modal-value'>${institution.summary_stats.i10_index}</span></div>`;
+    }
+    if (institution.summary_stats && typeof institution.summary_stats['2yr_mean_citedness'] === 'number') {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>2Y Atıf Ort:</span> <span class='institution-modal-value'>${institution.summary_stats['2yr_mean_citedness'].toFixed(2)}</span></div>`;
+    }
+    
+    // Alanlar (konseptler)
+    if (Array.isArray(institution.x_concepts) && institution.x_concepts.length > 0) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Alanlar:</span></div><div class='institution-modal-keywords'>` +
+            institution.x_concepts.map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`).join('') + `</div>`;
+    }
+    
+    // Roller (her biri ayrı div içinde badge)
+    if (Array.isArray(institution.roles) && institution.roles.length > 0) {
+        html += `<div class='institution-modal-section' style='display:flex;align-items:center;gap:1.1em;flex-wrap:wrap;'><span class='institution-modal-label' style='margin-bottom:0;'>Roller:</span><div class='institution-modal-roles'>` +
+            institution.roles.map(r => `<div class='role-badge-wrap'><span class='role-badge'>${escapeHtml(r.role)} <span class='role-badge-count'>(${r.works_count})</span></span></div>`).join(' ') + `</div></div>`;
+    }
+    
+    // Hiyerarşi (sadece doluysa göster)
+    if (Array.isArray(institution.lineage) && institution.lineage.length > 0) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Hiyerarşi:</span></div><div class='institution-modal-lineage'>` +
+            institution.lineage.map(l => `<div class='lineage-item'>${escapeHtml(l.display_name)}</div>`).join('') + `</div>`;
+    }
+    
+    // Sosyal/linkler
+    if (institution.ids) {
+        let links = [];
+        if (institution.ids.wikipedia) links.push(`<a href='${institution.ids.wikipedia}' target='_blank'>Wikipedia</a>`);
+        if (institution.ids.wikidata) links.push(`<a href='${institution.ids.wikidata}' target='_blank'>Wikidata</a>`);
+        if (institution.ids.mag) links.push(`<a href='https://www.microsoft.com/en-us/research/project/microsoft-academic-graph/' target='_blank'>MAG</a>`);
+        if (links.length > 0) {
+            html += `<div class='institution-modal-section'><span class='institution-modal-label'>Linkler:</span> <span class='institution-modal-value'>${links.join(' | ')}</span></div>`;
+        }
+    }
+    
+    // Güncellenme tarihi
+    if (institution.updated_date) {
+        html += `<div class='institution-modal-section'><span class='institution-modal-label'>Güncellenme:</span> <span class='institution-modal-value'>${escapeHtml(institution.updated_date)}</span></div>`;
+    }
+    
+    return html;
+} 
