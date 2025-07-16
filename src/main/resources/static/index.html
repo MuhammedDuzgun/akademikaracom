@@ -240,6 +240,10 @@
             <div id="institution-search-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="institution-search-result"></div>
         </section>
+        <!-- Sadece arama sekmelerinde görünecek dipnot -->
+        <div class="api-limit-note" style="margin:2.5em 0 1.5em 0; text-align:center; color:#888; font-size:0.98em; max-width:700px; margin-left:auto; margin-right:auto; display:none;">
+          API sınırlandırması nedeni ile tek seferde on bin sonuç çekilebilmektedir, bu nedenle her hangi bir sekmedeki her hangi bir aramanızda on binden fazla sonuç bulunsa bile sadece on bin sonuç listelenmektedir. İlerleyen zamanlarda sitenin kullanılma durumuna göre bu gibi sınırlandırmalara takılmadan tüm kaynakları sizlere sunmayı hedeflemekteyiz.
+        </div>
         <!-- Profilim Bölümü -->
         <section id="profile-section" class="main-section" aria-labelledby="profile-title">
             <h2 id="profile-title">Profilim</h2>
@@ -291,6 +295,39 @@
             </div>
         </div>
     </div>
+    <!-- Kuruma ait tüm yayınlar modalı -->
+    <div id="institution-works-modal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button id="institution-works-modal-close" class="modal-close-btn" aria-label="Kapat">×</button>
+            <div id="institution-works-modal-body">
+                <!-- Kurumun tüm yayınları buraya gelecek -->
+            </div>
+        </div>
+    </div>
     <script src="main.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  function updateApiLimitNoteVisibility() {
+    const note = document.querySelector('.api-limit-note');
+    const activeSection = document.querySelector('.main-section.active');
+    if (!note || !activeSection) return;
+    // Sadece makale bul, yazar ara, kurum ara sekmelerinde göster
+    const allowedSections = ['paper-search-section', 'author-search-section', 'institution-search-section'];
+    if (allowedSections.includes(activeSection.id)) {
+      note.style.display = '';
+    } else {
+      note.style.display = 'none';
+    }
+  }
+  // İlk yüklemede ve sekme değişimlerinde kontrol et
+  updateApiLimitNoteVisibility();
+  document.body.addEventListener('click', function(e) {
+    if (e.target.classList.contains('nav-btn')) {
+      setTimeout(updateApiLimitNoteVisibility, 50);
+    }
+  });
+});
+</script>
 </body>
 </html> 

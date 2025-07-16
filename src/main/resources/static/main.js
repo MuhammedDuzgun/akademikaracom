@@ -796,20 +796,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderInstitutionCard(inst) {
-        const country = inst.country_code ? `<span title='Ülke'>🌍 ${inst.country_code.toUpperCase()}</span>` : '';
-        const type = inst.type ? `<span title='Tür'>🏷️ ${inst.type}</span>` : '';
-        const works = typeof inst.works_count === 'number' ? `<span title='Toplam Yayın'>📄 ${inst.works_count}</span>` : '';
-        const cited = typeof inst.cited_by_count === 'number' ? `<span title='Toplam Atıf'>⭐ ${inst.cited_by_count}</span>` : '';
+        const country = inst.country_code ? `<span class='institution-meta-badge' title='Ülke'>🌍 Ülke: ${inst.country_code.toUpperCase()}</span>` : '';
+        const type = inst.type ? `<span class='institution-meta-badge' title='Tür'>🏷️ Tür: ${escapeHtml(inst.type)}</span>` : '';
+        const city = inst.city ? `<span class='institution-meta-badge' title='Şehir'>🏙️ Şehir: ${escapeHtml(inst.city)}</span>` : '';
+        const region = inst.region ? `<span class='institution-meta-badge' title='Bölge'>🗺️ Bölge: ${escapeHtml(inst.region)}</span>` : '';
+        const cited = typeof inst.cited_by_count === 'number' ? `<span class='institution-meta-badge' title='Toplam Atıf'>⭐ Toplam Atıf: ${inst.cited_by_count.toLocaleString()}</span>` : '';
+        // h-index, i10-index, 2Y atıf ortalaması
+        const hindex = inst.summary_stats && typeof inst.summary_stats.h_index === 'number' ? `<span class='institution-meta-badge' title='h-index'>h-index: ${inst.summary_stats.h_index}</span>` : '';
+        const i10 = inst.summary_stats && typeof inst.summary_stats.i10_index === 'number' ? `<span class='institution-meta-badge' title='i10-index'>i10: ${inst.summary_stats.i10_index}</span>` : '';
+        const meanCited = inst.summary_stats && typeof inst.summary_stats['2yr_mean_citedness'] === 'number' ? `<span class='institution-meta-badge' title='2 Yıllık Ortalama Atıf'>2Y Atıf Ort: ${inst.summary_stats['2yr_mean_citedness'].toFixed(2)}</span>` : '';
+        // Alanlar (x_concepts)
+        let concepts = '';
+        if (inst.x_concepts && inst.x_concepts.length > 0) {
+            const shown = inst.x_concepts.slice(0, 3).map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`);
+            const more = inst.x_concepts.length > 3 ? `<span class='concept-badge concept-badge-more'>+${inst.x_concepts.length - 3} alan</span>` : '';
+            concepts = shown.join(' ') + more;
+        }
+        // Wikipedia, Wikidata, ROR linkleri (ikon + metin)
+        const ids = inst.ids || {};
+        const wikipedia = ids.wikipedia ? `<a href='${ids.wikipedia}' target='_blank' title='Wikipedia' class='institution-link'><span style='font-size:1.1em;'>📖</span> Wikipedia</a>` : '';
+        const wikidata = ids.wikidata ? `<a href='${ids.wikidata}' target='_blank' title='Wikidata' class='institution-link'><span style='font-size:1.1em;'>🗃️</span> Wikidata</a>` : '';
+        const ror = inst.ror ? `<a href='${inst.ror}' target='_blank' title='ROR' class='institution-link'><span style='font-size:1.1em;'>🏢</span> ROR</a>` : '';
+        // Roller (en çok yayına sahip ilk rol)
+        let topRole = '';
+        if (Array.isArray(inst.roles) && inst.roles.length > 0) {
+            const sortedRoles = inst.roles.slice().sort((a, b) => (b.works_count || 0) - (a.works_count || 0));
+            const role = sortedRoles[0];
+            if (role && role.role) {
+                topRole = `<span class='institution-meta-badge' title='Rol'>Rol: ${escapeHtml(role.role)} (${role.works_count})</span>`;
+            }
+        }
         const image = inst.image_thumbnail_url ? `<img src='${inst.image_thumbnail_url}' alt='Kurum Logosu' class='institution-logo' style='width:48px;height:48px;border-radius:50%;margin-bottom:0.7em;'>` : '';
+        // Tüm Yayınlar butonu (yazar kartındaki gibi)
+        const allWorksBtn = typeof inst.works_count === 'number' && inst.works_count > 0 && inst.works_api_url ? `<button class="btn-primary institution-works-btn" data-institution-id="${inst.id}" data-works-url="${inst.works_api_url}" data-initial-count="${inst.works_count}">Tüm Yayınlar (${inst.works_count})</button>` : '';
         return `
-            <div class="paper-card institution-card">
+            <div class="paper-card institution-card" data-institution-id="${inst.id}">
                 ${image}
                 <div class="paper-title"><a href="#" class="institution-detail-link" data-institution-id="${inst.id}">${escapeHtml(inst.display_name)}</a></div>
                 <div class="paper-meta">
                     ${country}
                     ${type}
-                    ${works}
+                    ${city}
+                    ${region}
+                    ${topRole}
+                </div>
+                <div class="paper-meta">
+                    ${concepts}
+                </div>
+                <div class="paper-meta">
+                    ${hindex}
+                    ${i10}
+                    ${meanCited}
+                </div>
+                <div class="paper-meta">
                     ${cited}
+                    ${wikipedia}
+                    ${wikidata}
+                    ${ror}
+                </div>
+                <div class="paper-meta" style="margin-top:0.7em;">
+                    ${allWorksBtn}
                 </div>
             </div>
         `;
@@ -1656,7 +1702,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const authorWorksModalBody = document.getElementById('author-works-modal-body');
     const authorWorksModalClose = document.getElementById('author-works-modal-close');
 
-    // MODAL AÇ/KAPA FONKSİYONLARI GERİ EKLENİYOR
     function openAuthorWorksModal() {
         authorWorksModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -1667,13 +1712,11 @@ document.addEventListener('DOMContentLoaded', () => {
         authorWorksModalBody.innerHTML = '';
     }
     if (authorWorksModalClose) authorWorksModalClose.addEventListener('click', closeAuthorWorksModal);
-    // Sadece backdrop'a tıklanınca modalı kapat
     const authorWorksBackdrop = authorWorksModal ? authorWorksModal.querySelector('.modal-backdrop') : null;
     if (authorWorksBackdrop) {
         authorWorksBackdrop.addEventListener('click', closeAuthorWorksModal);
     }
-
-    // Yeni: Detay için tam modalı kaplayan bir yapı ekle
+    // Detay için tam modalı kaplayan bir yapı ekle
     let authorWorksFullDetailModal = null;
     function createAuthorWorksFullDetailModal() {
         if (!authorWorksFullDetailModal) {
@@ -1687,9 +1730,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             authorWorksModal.appendChild(authorWorksFullDetailModal);
-            // Kapatma butonu
             authorWorksFullDetailModal.querySelector('.author-works-full-detail-close').onclick = closeAuthorWorksFullDetailModal;
-            // Sadece backdrop'a tıklanınca kapansın
             authorWorksFullDetailModal.querySelector('.author-works-full-detail-backdrop').onclick = closeAuthorWorksFullDetailModal;
         }
     }
@@ -1708,9 +1749,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 200);
         }
     }
-
-    // Tüm Yayınlar linkine tıklama
-    // (delegasyon ile body'ye ekle)
+    // Tüm Yayınlar linkine tıklama (delegasyon ile body'ye ekle)
     document.body.addEventListener('click', async function(e) {
         const link = e.target.closest('.author-works-link');
         if (link) {
@@ -1721,96 +1760,65 @@ document.addEventListener('DOMContentLoaded', () => {
             authorWorksModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
             openAuthorWorksModal();
             let currentPage = 1;
-            let perPage = 25; // Her zaman 25 yayın/sayfa
+            let perPage = 25;
             let totalWorks = 0;
             let totalPages = 1;
-            let allWorks = [];
-            let filteredWorks = [];
-            let lastWidth = authorWorksModal.offsetWidth;
             let searchValue = '';
-
-            // Arama barı HTML'i
-            function renderWorksSearchBar() {
-                return `<div class="author-works-search-bar" style="margin-bottom:1rem;display:flex;gap:0.7rem;align-items:center;">
-                    <input type="text" id="author-works-search-input" placeholder="Yayınlarda ara..." style="flex:1;padding:0.6rem 1rem;font-size:1.05rem;border-radius:8px;border:1px solid #444;outline:none;" autocomplete="off">
-                </div>`;
-            }
-
-            // Yeni: Modal ikiye bölünüyor (sol: liste, sağ: detay paneli)
-            function renderSplitWorksModal(works, allWorksCount, currentPage, totalPages, search) {
-                // Sağ panel başta gizli, id: author-works-detail-panel
-                return `
-                <div class="author-works-modal-split" style="display:flex;flex-direction:row;gap:2.2rem;min-height:400px;">
-                  <div class="author-works-list-col" style="flex:1 1 0;min-width:0;">
-                    <h2>Tüm Yayınlar (${allWorksCount})</h2>
-                    ${renderWorksSearchBar()}
-                    <div id="author-works-list-content"></div>
-                  </div>
-                  <div class="author-works-detail-col" id="author-works-detail-panel" style="flex:1 1 0;min-width:0;max-width:520px;display:none;position:relative;background:#181f2a;border-radius:1.2em;padding:1.2em 1.2em 1.2em 1.2em;box-shadow:0 2px 12px 0 rgba(37,99,235,0.13);">
-                    <button id="author-works-detail-close" style="position:absolute;top:1.1em;right:1.1em;font-size:2em;background:none;border:none;color:#3b82f6;cursor:pointer;z-index:2;">×</button>
-                    <div id="author-works-detail-body"></div>
-                  </div>
-                </div>
-                <div id="author-works-pagination-wrap"></div>
-                `;
-            }
-
-            // Filtreleme fonksiyonu
-            function filterWorksBySearch(works, search) {
-                if (!search) return works;
-                const s = search.trim().toLowerCase();
-                return works.filter(w => (w.title || '').toLowerCase().includes(s));
-            }
-
-            async function fetchAllWorks() {
-                // Tüm yayınları belleğe al (ilk açılışta bir defa)
-                let page = 1;
-                let works = [];
-                let total = 0;
-                while (true) {
-                    const url = worksUrl + `?per_page=100&page=${page}`;
+            async function fetchWorksPage(page, search = '') {
+                let url = worksUrl + `?per_page=${perPage}&page=${page}`;
+                if (search && search.trim().length > 0) {
+                    url += `&search=${encodeURIComponent(search.trim())}`;
+                }
                     const resp = await fetch(url);
-                    if (!resp.ok) break;
+                if (!resp.ok) throw new Error('Yayınlar alınamadı');
                     const data = await resp.json();
-                    if (page === 1) {
-                        total = data.meta && data.meta.count ? data.meta.count : 0;
-                    }
-                    if (!data.results || data.results.length === 0) break;
-                    works = works.concat(data.results);
-                    if (works.length >= total) break;
-                    page++;
-                }
-                return works;
+                return data;
             }
-
             async function loadWorksPage(page, search = '') {
-                if (allWorks.length === 0) {
-                    allWorks = await fetchAllWorks();
-                }
-                filteredWorks = filterWorksBySearch(allWorks, search);
-                totalWorks = filteredWorks.length;
-                totalPages = Math.max(1, Math.ceil(totalWorks / perPage));
-                if (page > totalPages) page = totalPages;
+                authorWorksModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
+                try {
+                    const data = await fetchWorksPage(page, search);
+                    const works = data.results || [];
+                    totalWorks = data.meta && data.meta.count ? data.meta.count : 0;
+                    const maxPage = Math.ceil(10000 / perPage);
+                    let calculatedTotalPages = Math.ceil(totalWorks / perPage);
+                    totalPages = Math.min(calculatedTotalPages, maxPage);
+                    if (page > totalPages) {
+                        authorWorksModalBody.innerHTML = renderSplitWorksModal([], 0, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                        const listContent = document.getElementById('author-works-list-content');
+                        if (listContent) {
+                            listContent.innerHTML = `<div class='error-message'>Yayın bulunamadı.</div>`;
+                        }
+                        // Arama barını yeniden ayarla
+                        const searchInput = document.getElementById('author-works-search-input');
+                        if (searchInput) {
+                            searchInput.value = search;
+                            let searchTimeout;
+                            searchInput.addEventListener('input', function() {
+                                clearTimeout(searchTimeout);
+                                searchTimeout = setTimeout(() => {
+                                    searchValue = searchInput.value;
+                                    loadWorksPage(1, searchValue);
+                                }, 1000);
+                            });
+                        }
+                        return;
+                    }
                 currentPage = page;
-                let works = filteredWorks.slice((currentPage - 1) * perPage, currentPage * perPage);
-                // Yeni: Split modalı render et
-                authorWorksModalBody.innerHTML = renderSplitWorksModal(works, allWorks.length, currentPage, totalPages, search);
-                // Listeyi ayrı div'e yaz
+                    authorWorksModalBody.innerHTML = renderSplitWorksModal(works, totalWorks, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
                 const listContent = document.getElementById('author-works-list-content');
                 if (listContent) {
                     if (!works.length) {
-                        listContent.innerHTML = '<div class="error-message">Yayın bulunamadı.</div>';
+                        listContent.innerHTML = `<div class="error-message">Yayın bulunamadı.</div>`;
                     } else {
                         listContent.innerHTML = `<div class='papers-list'>${works.map(renderPaperCard).join('')}</div>`;
-                        // Makale başlıklarına tıklama event delegation - SADECE bu modal için
                         listContent.addEventListener('click', async function(ev) {
                             const link = ev.target.closest('.work-detail-link');
                             if (link) {
                                 ev.preventDefault();
-                                ev.stopPropagation(); // Ana sayfadaki event'leri engelle
+                                    ev.stopPropagation();
                                 const workId = link.getAttribute('data-work-id');
                                 if (!workId) return;
-                                // Yeni: Tam modalı kaplayan detay modalı aç
                                 openAuthorWorksFullDetailModal('<div class="loading">Yükleniyor...</div>');
                                 try {
                                     let id = workId;
@@ -1826,30 +1834,60 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                 }
-                // Pagination'ı ayrı div'e yaz
                 const pagWrap = document.getElementById('author-works-pagination-wrap');
                 if (pagWrap) {
-                    pagWrap.innerHTML = renderWorksPagination(currentPage, totalPages);
+                        pagWrap.innerHTML = renderWorksPagination(currentPage, totalPages, 'author');
                 }
-                // Arama inputuna event ekle
                 const searchInput = document.getElementById('author-works-search-input');
                 if (searchInput) {
                     searchInput.value = search;
                     searchInput.focus();
+                        let searchTimeout;
                     searchInput.addEventListener('input', function() {
+                            clearTimeout(searchTimeout);
+                            searchTimeout = setTimeout(() => {
                         searchValue = searchInput.value;
                         loadWorksPage(1, searchValue);
+                            }, 1000);
                     });
                 }
-                // Detay paneli kapatma butonu event (şimdilik sadece gizle)
                 const detailCloseBtn = document.getElementById('author-works-detail-close');
                 if (detailCloseBtn) {
                     detailCloseBtn.addEventListener('click', function() {
                         document.getElementById('author-works-detail-panel').style.display = 'none';
                     });
                 }
+                } catch (err) {
+                    console.error('Yayınlar alınırken hata:', err);
+                    if (currentPage > 1) {
+                        authorWorksModalBody.innerHTML = renderSplitWorksModal([], 0, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                        const listContent = document.getElementById('author-works-list-content');
+                        if (listContent) {
+                            listContent.innerHTML = `<div class='error-message'>Bu sayfada yayın bulunamadı, bir önceki sayfa yükleniyor...</div>`;
+                        }
+                        setTimeout(() => loadWorksPage(currentPage - 1, search), 1000);
+                    } else {
+                        authorWorksModalBody.innerHTML = renderSplitWorksModal([], 0, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                        const listContent = document.getElementById('author-works-list-content');
+                        if (listContent) {
+                            listContent.innerHTML = `<div class='error-message'>Yayın bulunamadı.</div>`;
+                        }
+                        // Arama barını yeniden ayarla
+                        const searchInput = document.getElementById('author-works-search-input');
+                        if (searchInput) {
+                            searchInput.value = search;
+                            let searchTimeout;
+                            searchInput.addEventListener('input', function() {
+                                clearTimeout(searchTimeout);
+                                searchTimeout = setTimeout(() => {
+                                    searchValue = searchInput.value;
+                                    loadWorksPage(1, searchValue);
+                                }, 1000);
+                            });
+                        }
+                    }
+                }
             }
-
             authorWorksModalBody.onclick = function(ev) {
                 const btn = ev.target.closest('.pagination-btn[data-works-page]');
                 if (btn) {
@@ -1860,15 +1898,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             };
-            // Modal boyutu değişse bile perPage sabit 25 kalacak
             const resizeObserver = new ResizeObserver(() => {
-                if (authorWorksModal.offsetWidth !== lastWidth) {
-                    lastWidth = authorWorksModal.offsetWidth;
-                    // perPage = 25; // Zaten sabit
                     totalPages = Math.max(1, Math.ceil(totalWorks / perPage));
                     if (currentPage > totalPages) currentPage = totalPages;
                     loadWorksPage(currentPage, searchValue);
-                }
             });
             resizeObserver.observe(authorWorksModal);
             authorWorksModalClose.addEventListener('click', () => resizeObserver.disconnect(), { once: true });
@@ -1885,10 +1918,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Pagination fonksiyonunu modal için modernleştir
-    function renderWorksPagination(current, total) {
+    function renderWorksPagination(current, total, type = 'author') {
         if (total <= 1) return '';
         let html = `<div class='paper-pagination'>`;
-        // Geri butonu
         if (current > 1) {
             html += `<button class='pagination-btn' data-works-page='${current - 1}'>&laquo;</button>`;
         }
@@ -1905,12 +1937,234 @@ document.addEventListener('DOMContentLoaded', () => {
             if (end < total - 1) html += `<span class='pagination-ellipsis'>...</span>`;
             html += `<button class='pagination-btn' data-works-page='${total}'>${total}</button>`;
         }
-        // İleri butonu
         if (current < total) {
             html += `<button class='pagination-btn' data-works-page='${current + 1}'>&raquo;</button>`;
         }
         html += `</div>`;
         return html;
+    }
+
+    // --- KURUM TÜM YAYINLAR MODALI ---
+    // Kurum kartındaki "Tüm Yayınlar" butonuna tıklama
+    document.body.addEventListener('click', async function(e) {
+        const btn = e.target.closest('.institution-works-btn');
+        if (btn) {
+            e.preventDefault();
+            const institutionId = btn.getAttribute('data-institution-id');
+            const worksUrl = btn.getAttribute('data-works-url');
+            if (!institutionId || !worksUrl) return;
+            
+            // Yazar modalını kurum için kullan
+            authorWorksModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
+            openAuthorWorksModal();
+            
+            let currentPage = 1;
+            let perPage = 25;
+            let totalWorks = 0;
+            let totalPages = 1;
+            let searchValue = '';
+            
+            async function fetchWorksPage(page, search = '') {
+                let url = worksUrl + `?per_page=${perPage}&page=${page}`;
+                if (search && search.trim().length > 0) {
+                    url += `&search=${encodeURIComponent(search.trim())}`;
+                }
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('Yayınlar alınamadı');
+                const data = await resp.json();
+                return data;
+            }
+            
+            async function loadWorksPage(page, search = '') {
+                authorWorksModalBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
+                try {
+                    const data = await fetchWorksPage(page, search);
+                    const works = data.results || [];
+                    totalWorks = data.meta && data.meta.count ? data.meta.count : 0;
+                    const maxPage = Math.ceil(10000 / perPage);
+                    let calculatedTotalPages = Math.ceil(totalWorks / perPage);
+                    totalPages = Math.min(calculatedTotalPages, maxPage);
+                    
+                    if (page > totalPages) {
+                        authorWorksModalBody.innerHTML = renderSplitWorksModal([], 0, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                        const listContent = document.getElementById('author-works-list-content');
+                        if (listContent) {
+                            listContent.innerHTML = `<div class='error-message'>Yayın bulunamadı.</div>`;
+                        }
+                        // Arama barını yeniden ayarla
+                        const searchInput = document.getElementById('author-works-search-input');
+                        if (searchInput) {
+                            searchInput.value = search;
+                            let searchTimeout;
+                            searchInput.addEventListener('input', function() {
+                                clearTimeout(searchTimeout);
+                                searchTimeout = setTimeout(() => {
+                                    searchValue = searchInput.value;
+                                    loadWorksPage(1, searchValue);
+                                }, 1000);
+                            });
+                        }
+                        return;
+                    }
+                    
+                    currentPage = page;
+                    authorWorksModalBody.innerHTML = renderSplitWorksModal(works, totalWorks, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                    
+                    const listContent = document.getElementById('author-works-list-content');
+                    if (listContent) {
+                        if (!works.length) {
+                            listContent.innerHTML = `<div class="error-message">Yayın bulunamadı.</div>`;
+                        } else {
+                            listContent.innerHTML = `<div class='papers-list'>${works.map(renderPaperCard).join('')}</div>`;
+                            listContent.addEventListener('click', async function(ev) {
+                                const link = ev.target.closest('.work-detail-link');
+                                if (link) {
+                                    ev.preventDefault();
+                                    ev.stopPropagation();
+                                    const workId = link.getAttribute('data-work-id');
+                                    if (!workId) return;
+                                    openAuthorWorksFullDetailModal('<div class="loading">Yükleniyor...</div>');
+                                    try {
+                                        let id = workId;
+                                        if (id.startsWith('https://openalex.org/')) id = id.split('/').pop();
+                                        const resp = await fetch(`https://api.openalex.org/works/${id}`);
+                                        if (!resp.ok) throw new Error('Detaylar alınamadı');
+                                        const work = await resp.json();
+                                        openAuthorWorksFullDetailModal(renderWorkDetailModal(work));
+                                    } catch (err) {
+                                        openAuthorWorksFullDetailModal(`<div class='error-message'>Detaylar alınırken hata oluştu: ${err.message}</div>`);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    const pagWrap = document.getElementById('author-works-pagination-wrap');
+                    if (pagWrap) {
+                        pagWrap.innerHTML = renderWorksPagination(currentPage, totalPages, 'author');
+                    }
+                    
+                    const searchInput = document.getElementById('author-works-search-input');
+                    if (searchInput) {
+                        searchInput.value = search;
+                        searchInput.focus();
+                        let searchTimeout;
+                        searchInput.addEventListener('input', function() {
+                            clearTimeout(searchTimeout);
+                            searchTimeout = setTimeout(() => {
+                                searchValue = searchInput.value;
+                                loadWorksPage(1, searchValue);
+                            }, 1000);
+                        });
+                    }
+                    
+                    const detailCloseBtn = document.getElementById('author-works-detail-close');
+                    if (detailCloseBtn) {
+                        detailCloseBtn.addEventListener('click', function() {
+                            document.getElementById('author-works-detail-panel').style.display = 'none';
+                        });
+                    }
+                } catch (err) {
+                    console.error('Yayınlar alınırken hata:', err);
+                    if (currentPage > 1) {
+                        authorWorksModalBody.innerHTML = renderSplitWorksModal([], 0, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                        const listContent = document.getElementById('author-works-list-content');
+                        if (listContent) {
+                            listContent.innerHTML = `<div class='error-message'>Bu sayfada yayın bulunamadı, bir önceki sayfa yükleniyor...</div>`;
+                        }
+                        setTimeout(() => loadWorksPage(currentPage - 1, search), 1000);
+                    } else {
+                        authorWorksModalBody.innerHTML = renderSplitWorksModal([], 0, currentPage, totalPages, search, 'author-works-search-input', 'Yayınlarda ara...');
+                        const listContent = document.getElementById('author-works-list-content');
+                        if (listContent) {
+                            listContent.innerHTML = `<div class='error-message'>Yayın bulunamadı.</div>`;
+                        }
+                        // Arama barını yeniden ayarla
+                        const searchInput = document.getElementById('author-works-search-input');
+                        if (searchInput) {
+                            searchInput.value = search;
+                            let searchTimeout;
+                            searchInput.addEventListener('input', function() {
+                                clearTimeout(searchTimeout);
+                                searchTimeout = setTimeout(() => {
+                                    searchValue = searchInput.value;
+                                    loadWorksPage(1, searchValue);
+                                }, 1000);
+                            });
+                        }
+                    }
+                }
+            }
+            
+            authorWorksModalBody.onclick = function(ev) {
+                const btn = ev.target.closest('.pagination-btn[data-works-page]');
+                if (btn) {
+                    const page = parseInt(btn.getAttribute('data-works-page'), 10);
+                    if (!isNaN(page) && page !== currentPage) {
+                        currentPage = page;
+                        loadWorksPage(currentPage, searchValue);
+                    }
+                }
+            };
+            
+            const resizeObserver = new ResizeObserver(() => {
+                totalPages = Math.max(1, Math.ceil(totalWorks / perPage));
+                if (currentPage > totalPages) currentPage = totalPages;
+                loadWorksPage(currentPage, searchValue);
+            });
+            resizeObserver.observe(authorWorksModal);
+            authorWorksModalClose.addEventListener('click', () => resizeObserver.disconnect(), { once: true });
+            
+            loadWorksPage(currentPage);
+        }
+    });
+    function renderWorksPagination(current, total, type = 'author') {
+        if (total <= 1) return '';
+        let html = `<div class='paper-pagination'>`;
+        if (current > 1) {
+            html += `<button class='pagination-btn' data-works-page='${current - 1}'>&laquo;</button>`;
+        }
+        let start = Math.max(1, current - 2);
+        let end = Math.min(total, current + 2);
+        if (start > 1) {
+            html += `<button class='pagination-btn' data-works-page='1'>1</button>`;
+            if (start > 2) html += `<span class='pagination-ellipsis'>...</span>`;
+        }
+        for (let i = start; i <= end; i++) {
+            html += `<button class='pagination-btn${i === current ? ' active' : ''}' data-works-page='${i}'>${i}</button>`;
+        }
+        if (end < total) {
+            if (end < total - 1) html += `<span class='pagination-ellipsis'>...</span>`;
+            html += `<button class='pagination-btn' data-works-page='${total}'>${total}</button>`;
+        }
+        if (current < total) {
+            html += `<button class='pagination-btn' data-works-page='${current + 1}'>&raquo;</button>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    // --- GLOBAL: Tüm Yayınlar modalı için ortak fonksiyonlar ---
+    function renderWorksSearchBar(inputId = 'author-works-search-input', placeholder = 'Yayınlarda ara...') {
+        return `<div class="author-works-search-bar" style="margin-bottom:1rem;display:flex;gap:0.7rem;align-items:center;">
+            <input type="text" id="${inputId}" placeholder="${placeholder}" style="flex:1;padding:0.6rem 1rem;font-size:1.05rem;border-radius:8px;border:1px solid #444;outline:none;" autocomplete="off">
+        </div>`;
+    }
+    function renderSplitWorksModal(works, allWorksCount, currentPage, totalPages, search, inputId = 'author-works-search-input', placeholder = 'Yayınlarda ara...') {
+        return `
+        <div class="author-works-modal-split" style="display:flex;flex-direction:row;gap:2.2rem;min-height:400px;">
+          <div class="author-works-list-col" style="flex:1 1 0;min-width:0;">
+            <h2>Tüm Yayınlar (${allWorksCount})</h2>
+            ${renderWorksSearchBar(inputId, placeholder)}
+            <div id="${inputId === 'author-works-search-input' ? 'author-works-list-content' : 'institution-works-list-content'}"></div>
+          </div>
+          <div class="author-works-detail-col" id="${inputId === 'author-works-search-input' ? 'author-works-detail-panel' : 'institution-works-detail-panel'}" style="flex:1 1 0;min-width:0;max-width:520px;display:none;position:relative;background:#181f2a;border-radius:1.2em;padding:1.2em 1.2em 1.2em 1.2em;box-shadow:0 2px 12px 0 rgba(37,99,235,0.13);">
+            <button id="${inputId === 'author-works-search-input' ? 'author-works-detail-close' : 'institution-works-detail-close'}" style="position:absolute;top:1.1em;right:1.1em;font-size:2em;background:none;border:none;color:#3b82f6;cursor:pointer;z-index:2;">×</button>
+            <div id="${inputId === 'author-works-search-input' ? 'author-works-detail-body' : 'institution-works-detail-body'}"></div>
+          </div>
+        </div>
+        <div id="${inputId === 'author-works-search-input' ? 'author-works-pagination-wrap' : 'institution-works-pagination-wrap'}"></div>
+        `;
     }
 }); 
 
