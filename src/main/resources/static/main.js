@@ -1655,6 +1655,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const authorWorksModal = document.getElementById('author-works-modal');
     const authorWorksModalBody = document.getElementById('author-works-modal-body');
     const authorWorksModalClose = document.getElementById('author-works-modal-close');
+
+    // MODAL AÇ/KAPA FONKSİYONLARI GERİ EKLENİYOR
     function openAuthorWorksModal() {
         authorWorksModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -1665,9 +1667,47 @@ document.addEventListener('DOMContentLoaded', () => {
         authorWorksModalBody.innerHTML = '';
     }
     if (authorWorksModalClose) authorWorksModalClose.addEventListener('click', closeAuthorWorksModal);
-    if (authorWorksModal) authorWorksModal.addEventListener('click', function(e) {
-        if (e.target === authorWorksModal) closeAuthorWorksModal();
-    });
+    // Sadece backdrop'a tıklanınca modalı kapat
+    const authorWorksBackdrop = authorWorksModal ? authorWorksModal.querySelector('.modal-backdrop') : null;
+    if (authorWorksBackdrop) {
+        authorWorksBackdrop.addEventListener('click', closeAuthorWorksModal);
+    }
+
+    // Yeni: Detay için tam modalı kaplayan bir yapı ekle
+    let authorWorksFullDetailModal = null;
+    function createAuthorWorksFullDetailModal() {
+        if (!authorWorksFullDetailModal) {
+            authorWorksFullDetailModal = document.createElement('div');
+            authorWorksFullDetailModal.className = 'author-works-full-detail-modal';
+            authorWorksFullDetailModal.innerHTML = `
+                <div class="author-works-full-detail-backdrop"></div>
+                <div class="author-works-full-detail-content">
+                    <button class="author-works-full-detail-close" aria-label="Kapat">×</button>
+                    <div class="author-works-full-detail-body"></div>
+                </div>
+            `;
+            authorWorksModal.appendChild(authorWorksFullDetailModal);
+            // Kapatma butonu
+            authorWorksFullDetailModal.querySelector('.author-works-full-detail-close').onclick = closeAuthorWorksFullDetailModal;
+            // Sadece backdrop'a tıklanınca kapansın
+            authorWorksFullDetailModal.querySelector('.author-works-full-detail-backdrop').onclick = closeAuthorWorksFullDetailModal;
+        }
+    }
+    function openAuthorWorksFullDetailModal(html) {
+        createAuthorWorksFullDetailModal();
+        authorWorksFullDetailModal.style.display = 'flex';
+        authorWorksFullDetailModal.querySelector('.author-works-full-detail-body').innerHTML = html;
+        setTimeout(() => authorWorksFullDetailModal.classList.add('active'), 10);
+    }
+    function closeAuthorWorksFullDetailModal() {
+        if (authorWorksFullDetailModal) {
+            authorWorksFullDetailModal.classList.remove('active');
+            setTimeout(() => {
+                authorWorksFullDetailModal.style.display = 'none';
+                authorWorksFullDetailModal.querySelector('.author-works-full-detail-body').innerHTML = '';
+            }, 200);
+        }
+    }
 
     // Tüm Yayınlar linkine tıklama
     // (delegasyon ile body'ye ekle)
@@ -1770,21 +1810,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ev.stopPropagation(); // Ana sayfadaki event'leri engelle
                                 const workId = link.getAttribute('data-work-id');
                                 if (!workId) return;
-                                const detailPanel = document.getElementById('author-works-detail-panel');
-                                const detailBody = document.getElementById('author-works-detail-body');
-                                if (detailPanel && detailBody) {
-                                    detailPanel.style.display = 'block';
-                                    detailBody.innerHTML = '<div class="loading">Yükleniyor...</div>';
-                                    try {
-                                        let id = workId;
-                                        if (id.startsWith('https://openalex.org/')) id = id.split('/').pop();
-                                        const resp = await fetch(`https://api.openalex.org/works/${id}`);
-                                        if (!resp.ok) throw new Error('Detaylar alınamadı');
-                                        const work = await resp.json();
-                                        detailBody.innerHTML = renderWorkDetailModal(work);
-                                    } catch (err) {
-                                        detailBody.innerHTML = `<div class='error-message'>Detaylar alınırken hata oluştu: ${err.message}</div>`;
-                                    }
+                                // Yeni: Tam modalı kaplayan detay modalı aç
+                                openAuthorWorksFullDetailModal('<div class="loading">Yükleniyor...</div>');
+                                try {
+                                    let id = workId;
+                                    if (id.startsWith('https://openalex.org/')) id = id.split('/').pop();
+                                    const resp = await fetch(`https://api.openalex.org/works/${id}`);
+                                    if (!resp.ok) throw new Error('Detaylar alınamadı');
+                                    const work = await resp.json();
+                                    openAuthorWorksFullDetailModal(renderWorkDetailModal(work));
+                                } catch (err) {
+                                    openAuthorWorksFullDetailModal(`<div class='error-message'>Detaylar alınırken hata oluştu: ${err.message}</div>`);
                                 }
                             }
                         });
