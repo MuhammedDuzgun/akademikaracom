@@ -233,6 +233,7 @@
                 <form id="institution-search-form" autocomplete="off" class="searchbar-drawer-form">
                     <input type="text" id="institution-search-input" name="institution-search-input" required placeholder="Kurum adı girin...">
                     <button type="submit" class="btn-primary">Ara</button>
+                    <div id="institution-search-result-count" class="search-result-count"></div>
                     <div id="institution-search-error" class="error-message"></div>
                 </form>
             </div>
@@ -277,6 +278,16 @@
             <button id="institution-modal-close" class="modal-close-btn" aria-label="Kapat">×</button>
             <div id="institution-modal-body">
                 <!-- Kurum detayları buraya gelecek -->
+            </div>
+        </div>
+    </div>
+    <!-- Yazar Tüm Yayınlar Modalı -->
+    <div id="author-works-modal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button id="author-works-modal-close" class="modal-close-btn" aria-label="Kapat">×</button>
+            <div id="author-works-modal-body">
+                <!-- Yazarın tüm yayınları buraya gelecek -->
             </div>
         </div>
     </div>
