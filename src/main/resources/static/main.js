@@ -1125,6 +1125,22 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Added cited_by_count max filter:', `-${maxCited}`);
         }
         
+        // Yazar adı/id filtresi
+        if (filters.authorId) {
+            filterList.push(`authorships.author.id:${filters.authorId}`);
+        } else if (filters.authorName) {
+            filterList.push(`raw_author_name.search:${filters.authorName}`);
+        }
+        // Kurum adı/id filtresi
+        if (filters.institutionName) {
+            const instInput = document.getElementById('institution-name');
+            const instId = instInput && instInput.getAttribute('data-id');
+            if (instId && instId.startsWith('https://openalex.org/I')) {
+                filterList.push(`institutions.id:${instId}`);
+            }
+            // isimle arama desteği yok, başka bir şey ekleme
+        }
+        
         // Filtreleri ekle
         if (filterList.length > 0) {
             url += `&filter=${filterList.join(',')}`;
@@ -1233,6 +1249,22 @@ document.addEventListener('DOMContentLoaded', () => {
             filters.sort = sortBy;
         }
         
+        // Yazar adı
+        const authorInput = document.getElementById('author-name');
+        const authorName = authorInput.value;
+        if (authorName) {
+            filters.authorName = authorName;
+            const authorId = authorInput.getAttribute('data-id');
+            if (authorId && authorId.startsWith('https://openalex.org/A')) {
+                filters.authorId = authorId;
+            }
+        }
+        // Kurum adı
+        const institutionName = document.getElementById('institution-name').value;
+        if (institutionName) {
+            filters.institutionName = institutionName;
+        }
+        
         return filters;
     }
 
@@ -1253,6 +1285,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cited-by-count-min').value = '';
         document.getElementById('cited-by-count-max').value = '';
         document.getElementById('sort-by').value = 'relevance';
+        // Yazar ve kurum adı filtrelerini de temizle
+        var authorInput = document.getElementById('author-name');
+        if (authorInput) { authorInput.value = ''; authorInput.removeAttribute('data-id'); }
+        var instInput = document.getElementById('institution-name');
+        if (instInput) { instInput.value = ''; instInput.removeAttribute('data-id'); }
     }
 
     // Filtreleri temizleme butonu
@@ -2167,6 +2204,360 @@ document.addEventListener('DOMContentLoaded', () => {
         <div id="${inputId === 'author-works-search-input' ? 'author-works-pagination-wrap' : 'institution-works-pagination-wrap'}"></div>
         `;
     }
+
+    // Yazar adı
+    const authorName = document.getElementById('author-name').value;
+    if (authorName) {
+        filters.authorName = authorName;
+    }
+    // Kurum adı
+    const institutionName = document.getElementById('institution-name').value;
+    if (institutionName) {
+        filters.institutionName = institutionName;
+    }
+
+    // --- AUTOCOMPLETE (YAZAR ADI) ---
+    let authorNameAutocompleteBox;
+    let authorNameAutocompleteResults = [];
+    let authorNameAutocompleteSelected = -1;
+    function createAuthorNameAutocompleteBox() {
+        if (!authorNameAutocompleteBox) {
+            const input = document.getElementById('author-name');
+            authorNameAutocompleteBox = document.createElement('div');
+            authorNameAutocompleteBox.className = 'autocomplete-box';
+            authorNameAutocompleteBox.style.position = 'absolute';
+            authorNameAutocompleteBox.style.zIndex = 1000;
+            authorNameAutocompleteBox.style.minWidth = input.offsetWidth + 'px';
+            input.parentNode.appendChild(authorNameAutocompleteBox);
+        }
+        authorNameAutocompleteBox.innerHTML = '';
+        authorNameAutocompleteBox.style.display = 'none';
+    }
+    function positionAuthorNameAutocompleteBox() {
+        if (!authorNameAutocompleteBox) return;
+        const input = document.getElementById('author-name');
+        authorNameAutocompleteBox.style.top = (input.offsetTop + input.offsetHeight) + 'px';
+        authorNameAutocompleteBox.style.left = input.offsetLeft + 'px';
+        authorNameAutocompleteBox.style.minWidth = input.offsetWidth + 'px';
+    }
+    async function fetchAuthorNameAutocomplete(query) {
+        const url = `https://api.openalex.org/autocomplete/authors?q=${encodeURIComponent(query)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return data.results || [];
+    }
+    function renderAuthorNameAutocomplete(results) {
+        if (!authorNameAutocompleteBox) createAuthorNameAutocompleteBox();
+        if (!results || results.length === 0) {
+            authorNameAutocompleteBox.style.display = 'none';
+            return;
+        }
+        authorNameAutocompleteBox.innerHTML = results.map((item, idx) => `
+            <div class='autocomplete-item${idx === authorNameAutocompleteSelected ? ' selected' : ''}' data-idx='${idx}'>
+                <span class='autocomplete-name'>${escapeHtml(item.display_name)}</span>
+                ${item.hint ? `<span class='autocomplete-hint'>${escapeHtml(item.hint)}</span>` : ''}
+            </div>
+        `).join('');
+        authorNameAutocompleteBox.style.display = 'block';
+        positionAuthorNameAutocompleteBox();
+    }
+    function clearAuthorNameAutocomplete() {
+        if (authorNameAutocompleteBox) {
+            authorNameAutocompleteBox.innerHTML = '';
+            authorNameAutocompleteBox.style.display = 'none';
+        }
+        authorNameAutocompleteResults = [];
+        authorNameAutocompleteSelected = -1;
+    }
+    if (document.getElementById('author-name')) {
+        createAuthorNameAutocompleteBox();
+        const input = document.getElementById('author-name');
+        input.addEventListener('input', async function(e) {
+            const val = input.value.trim();
+            if (val.length < 2) {
+                clearAuthorNameAutocomplete();
+                return;
+            }
+            try {
+                const results = await fetchAuthorNameAutocomplete(val);
+                authorNameAutocompleteResults = results;
+                authorNameAutocompleteSelected = -1;
+                renderAuthorNameAutocomplete(results);
+            } catch {
+                clearAuthorNameAutocomplete();
+            }
+        });
+        input.addEventListener('keydown', function(e) {
+            if (!authorNameAutocompleteResults.length || !authorNameAutocompleteBox || authorNameAutocompleteBox.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                authorNameAutocompleteSelected = (authorNameAutocompleteSelected + 1) % authorNameAutocompleteResults.length;
+                renderAuthorNameAutocomplete(authorNameAutocompleteResults);
+                const items = authorNameAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[authorNameAutocompleteSelected]) {
+                    items[authorNameAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                authorNameAutocompleteSelected = (authorNameAutocompleteSelected - 1 + authorNameAutocompleteResults.length) % authorNameAutocompleteResults.length;
+                renderAuthorNameAutocomplete(authorNameAutocompleteResults);
+                const items = authorNameAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[authorNameAutocompleteSelected]) {
+                    items[authorNameAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter') {
+                if (authorNameAutocompleteSelected >= 0 && authorNameAutocompleteResults[authorNameAutocompleteSelected]) {
+                    e.preventDefault();
+                    input.value = authorNameAutocompleteResults[authorNameAutocompleteSelected].display_name;
+                    input.setAttribute('data-id', authorNameAutocompleteResults[authorNameAutocompleteSelected].id);
+                    clearAuthorNameAutocomplete();
+                    // Otomatik arama formunu submit et
+                    const paperSearchForm = document.getElementById('paper-search-form');
+                    if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            } else if (e.key === 'Escape') {
+                clearAuthorNameAutocomplete();
+            }
+        });
+        authorNameAutocompleteBox.addEventListener('mousedown', function(e) {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const idx = parseInt(item.getAttribute('data-idx'), 10);
+                if (authorNameAutocompleteResults[idx]) {
+                    input.value = authorNameAutocompleteResults[idx].display_name;
+                    input.setAttribute('data-id', authorNameAutocompleteResults[idx].id);
+                    clearAuthorNameAutocomplete();
+                    // Otomatik arama formunu submit et
+                    const paperSearchForm = document.getElementById('paper-search-form');
+                    if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            }
+        });
+    }
+    // --- AUTOCOMPLETE (KURUM ADI) ---
+    let institutionNameAutocompleteBox;
+    let institutionNameAutocompleteResults = [];
+    let institutionNameAutocompleteSelected = -1;
+    function createInstitutionNameAutocompleteBox() {
+        if (!institutionNameAutocompleteBox) {
+            const input = document.getElementById('institution-name');
+            institutionNameAutocompleteBox = document.createElement('div');
+            institutionNameAutocompleteBox.className = 'autocomplete-box';
+            institutionNameAutocompleteBox.style.position = 'absolute';
+            institutionNameAutocompleteBox.style.zIndex = 1000;
+            institutionNameAutocompleteBox.style.minWidth = input.offsetWidth + 'px';
+            input.parentNode.appendChild(institutionNameAutocompleteBox);
+        }
+        institutionNameAutocompleteBox.innerHTML = '';
+        institutionNameAutocompleteBox.style.display = 'none';
+    }
+    function positionInstitutionNameAutocompleteBox() {
+        if (!institutionNameAutocompleteBox) return;
+        const input = document.getElementById('institution-name');
+        institutionNameAutocompleteBox.style.top = (input.offsetTop + input.offsetHeight) + 'px';
+        institutionNameAutocompleteBox.style.left = input.offsetLeft + 'px';
+        institutionNameAutocompleteBox.style.minWidth = input.offsetWidth + 'px';
+    }
+    async function fetchInstitutionNameAutocomplete(query) {
+        const url = `https://api.openalex.org/autocomplete/institutions?q=${encodeURIComponent(query)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return data.results || [];
+    }
+    function renderInstitutionNameAutocomplete(results) {
+        if (!institutionNameAutocompleteBox) createInstitutionNameAutocompleteBox();
+        if (!results || results.length === 0) {
+            institutionNameAutocompleteBox.style.display = 'none';
+            return;
+        }
+        institutionNameAutocompleteBox.innerHTML = results.map((item, idx) => `
+            <div class='autocomplete-item${idx === institutionNameAutocompleteSelected ? ' selected' : ''}' data-idx='${idx}'>
+                <span class='autocomplete-name'>${escapeHtml(item.display_name)}</span>
+                ${item.hint ? `<span class='autocomplete-hint'>${escapeHtml(item.hint)}</span>` : ''}
+            </div>
+        `).join('');
+        institutionNameAutocompleteBox.style.display = 'block';
+        positionInstitutionNameAutocompleteBox();
+    }
+    function clearInstitutionNameAutocomplete() {
+        if (institutionNameAutocompleteBox) {
+            institutionNameAutocompleteBox.innerHTML = '';
+            institutionNameAutocompleteBox.style.display = 'none';
+        }
+        institutionNameAutocompleteResults = [];
+        institutionNameAutocompleteSelected = -1;
+    }
+    if (document.getElementById('institution-name')) {
+        createInstitutionNameAutocompleteBox();
+        const input = document.getElementById('institution-name');
+        input.addEventListener('input', async function(e) {
+            const val = input.value.trim();
+            if (val.length < 2) {
+                clearInstitutionNameAutocomplete();
+                return;
+            }
+            try {
+                const results = await fetchInstitutionNameAutocomplete(val);
+                institutionNameAutocompleteResults = results;
+                institutionNameAutocompleteSelected = -1;
+                renderInstitutionNameAutocomplete(results);
+            } catch {
+                clearInstitutionNameAutocomplete();
+            }
+        });
+        input.addEventListener('keydown', function(e) {
+            if (!institutionNameAutocompleteResults.length || !institutionNameAutocompleteBox || institutionNameAutocompleteBox.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                institutionNameAutocompleteSelected = (institutionNameAutocompleteSelected + 1) % institutionNameAutocompleteResults.length;
+                renderInstitutionNameAutocomplete(institutionNameAutocompleteResults);
+                const items = institutionNameAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[institutionNameAutocompleteSelected]) {
+                    items[institutionNameAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                institutionNameAutocompleteSelected = (institutionNameAutocompleteSelected - 1 + institutionNameAutocompleteResults.length) % institutionNameAutocompleteResults.length;
+                renderInstitutionNameAutocomplete(institutionNameAutocompleteResults);
+                const items = institutionNameAutocompleteBox.querySelectorAll('.autocomplete-item');
+                if (items[institutionNameAutocompleteSelected]) {
+                    items[institutionNameAutocompleteSelected].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter') {
+                if (institutionNameAutocompleteSelected >= 0 && institutionNameAutocompleteResults[institutionNameAutocompleteSelected]) {
+                    e.preventDefault();
+                    input.value = institutionNameAutocompleteResults[institutionNameAutocompleteSelected].display_name;
+                    input.setAttribute('data-id', institutionNameAutocompleteResults[institutionNameAutocompleteSelected].id);
+                    clearInstitutionNameAutocomplete();
+                    // Otomatik arama formunu submit et
+                    const paperSearchForm = document.getElementById('paper-search-form');
+                    if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                }
+            } else if (e.key === 'Escape') {
+                clearInstitutionNameAutocomplete();
+            }
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target !== input && (!institutionNameAutocompleteBox || !institutionNameAutocompleteBox.contains(e.target))) {
+                clearInstitutionNameAutocomplete();
+            }
+        });
+        institutionNameAutocompleteBox.addEventListener('mousedown', function(e) {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const idx = parseInt(item.getAttribute('data-idx'), 10);
+                if (institutionNameAutocompleteResults[idx]) {
+                    input.value = institutionNameAutocompleteResults[idx].display_name;
+                    input.setAttribute('data-id', institutionNameAutocompleteResults[idx].id);
+                    clearInstitutionNameAutocomplete();
+                }
+            }
+        });
+    }
+
+    // Kurum autocomplete fonksiyonu (güncelleme)
+    (function() {
+        const input = document.getElementById('institution-name');
+        if (!input) return;
+        let box, results = [], selected = -1;
+        function createBox() {
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'autocomplete-box';
+                box.style.position = 'absolute';
+                box.style.zIndex = 1000;
+                box.style.minWidth = input.offsetWidth + 'px';
+                input.parentNode.appendChild(box);
+            }
+            box.innerHTML = '';
+            box.style.display = 'none';
+        }
+        function positionBox() {
+            if (!box) return;
+            box.style.top = (input.offsetTop + input.offsetHeight) + 'px';
+            box.style.left = input.offsetLeft + 'px';
+            box.style.minWidth = input.offsetWidth + 'px';
+        }
+        async function fetchInstitutions(q) {
+            const url = `https://api.openalex.org/autocomplete/institutions?q=${encodeURIComponent(q)}`;
+            const resp = await fetch(url);
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            return data.results || [];
+        }
+        function renderBox(items) {
+            if (!box) createBox();
+            if (!items || items.length === 0) { box.style.display = 'none'; return; }
+            box.innerHTML = items.map((item, idx) => `
+                <div class='autocomplete-item${idx === selected ? ' selected' : ''}' data-idx='${idx}'>
+                    <span class='autocomplete-name'>${escapeHtml(item.display_name)}</span>
+                    ${item.hint ? `<span class='autocomplete-hint'>${escapeHtml(item.hint)}</span>` : ''}
+                </div>
+            `).join('');
+            box.style.display = 'block';
+            positionBox();
+        }
+        function clearBox() {
+            if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+            results = []; selected = -1;
+        }
+        input.addEventListener('input', async function() {
+            // Elle yazınca data-id temizle
+            input.removeAttribute('data-id');
+            const val = input.value.trim();
+            if (val.length < 2) { clearBox(); return; }
+            try {
+                const items = await fetchInstitutions(val);
+                results = items; selected = -1;
+                renderBox(items);
+            } catch { clearBox(); }
+        });
+        input.addEventListener('keydown', function(e) {
+            if (!results.length || !box || box.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selected = (selected + 1) % results.length;
+                renderBox(results);
+                const items = box.querySelectorAll('.autocomplete-item');
+                if (items[selected]) items[selected].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selected = (selected - 1 + results.length) % results.length;
+                renderBox(results);
+                const items = box.querySelectorAll('.autocomplete-item');
+                if (items[selected]) items[selected].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (selected >= 0 && results[selected]) {
+                    e.preventDefault();
+                    input.value = results[selected].display_name;
+                    input.setAttribute('data-id', results[selected].id);
+                    clearBox();
+                } else {
+                    clearBox();
+                }
+            } else if (e.key === 'Escape') {
+                clearBox();
+            }
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target !== input && (!box || !box.contains(e.target))) clearBox();
+        });
+        // Mouse ile seçim
+        document.addEventListener('mousedown', function(e) {
+            if (!box || box.style.display === 'none') return;
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const idx = parseInt(item.getAttribute('data-idx'), 10);
+                if (results[idx]) {
+                    input.value = results[idx].display_name;
+                    input.setAttribute('data-id', results[idx].id);
+                    clearBox();
+                }
+            }
+        });
+    })();
 }); 
 
 // Makale detay modalı render fonksiyonu
