@@ -187,9 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const doi = paper.doi ? `<a href="${paper.doi}" target="_blank" title="DOI"><span style='font-size:1.1em;'>🔗</span> DOI</a>` : '';
         const year = paper.publication_year ? `<span title='Yayın Yılı'>📅 ${paper.publication_year}</span>` : '';
         const cited = typeof paper.cited_by_count === 'number' ? `<span title='Atıf Sayısı'>⭐ ${paper.cited_by_count}</span>` : '';
+        // Başlık tıklanabilir ve data-work-id ile
         return `
             <div class="paper-card">
-                <div class="paper-title">${escapeHtml(paper.title)}</div>
+                <div class="paper-title"><a href="#" class="work-detail-link" data-work-id="${paper.id}">${escapeHtml(paper.title)}</a></div>
                 <div class="paper-meta">
                     ${authors ? `<span>👤 ${authors}</span>` : ''}
                     ${venue ? `<span>📚 ${venue}</span>` : ''}

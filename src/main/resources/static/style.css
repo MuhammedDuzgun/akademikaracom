@@ -3610,125 +3610,229 @@ footer.main-footer p {
     #institution-modal .modal-content {
         position: relative;
         z-index: 1;
-        background: var(--bg-primary);
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
         border-radius: 2.2rem;
-        box-shadow: 0 16px 64px 0 rgba(37, 99, 235, 0.22);
-        padding: 3.2rem 3rem 2.3rem 3rem;
-        max-width: 720px;
+        box-shadow: 0 20px 80px 0 rgba(37, 99, 235, 0.25);
+        padding: 3.5rem 3.2rem 2.8rem 3.2rem;
+        max-width: 780px;
         width: 98vw;
         max-height: 92vh;
         overflow-y: auto;
-        animation: fadeIn 0.22s;
-        color: #f1f5f9;
-        font-size: 1.15rem;
-        line-height: 1.8;
-        border: 1.5px solid var(--primary-light);
+        animation: fadeIn 0.25s ease-out;
+        color: #f8fafc;
+        font-size: 1.18rem;
+        line-height: 1.7;
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        backdrop-filter: blur(10px);
     }
 
     #institution-modal-body h2 {
-        font-size: 1.55rem;
+        font-size: 1.8rem;
         font-weight: 900;
-        color: #2563eb;
-        margin-bottom: 1.7em;
-        line-height: 1.22;
-        letter-spacing: 0.01em;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 2rem;
+        line-height: 1.2;
+        letter-spacing: 0.02em;
         text-align: center;
-        text-shadow: 0 2px 12px rgba(37, 99, 235, 0.08);
+        text-shadow: none;
+        position: relative;
+    }
+
+    #institution-modal-body h2::after {
+        content: '';
+        position: absolute;
+        bottom: -0.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+        border-radius: 2px;
     }
 
     #institution-modal-body .institution-modal-section {
-        margin-bottom: 1.5em;
-        background: rgba(30, 41, 59, 0.13);
-        border-radius: 1.1em;
-        padding: 1.1em 1.3em;
-        box-shadow: 0 2px 12px 0 rgba(37, 99, 235, 0.07);
+        margin-bottom: 1.8em;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(51, 65, 85, 0.2) 100%);
+        border-radius: 1.3em;
+        padding: 1.4em 1.6em;
+        box-shadow: 0 4px 20px 0 rgba(37, 99, 235, 0.1);
         display: flex;
         align-items: flex-start;
-        gap: 0.7em;
+        gap: 1em;
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    #institution-modal-body .institution-modal-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    #institution-modal-body .institution-modal-section:hover::before {
+        opacity: 1;
+    }
+
+    #institution-modal-body .institution-modal-section:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px 0 rgba(37, 99, 235, 0.15);
+        border-color: rgba(59, 130, 246, 0.25);
     }
 
     #institution-modal-body .institution-modal-label {
         display: inline-block;
-        min-width: 130px;
-        color: #60a5fa;
+        min-width: 140px;
+        color: #93c5fd;
         font-weight: 800;
-        font-size: 1.07em;
-        margin-right: 0.7em;
-        letter-spacing: 0.01em;
+        font-size: 1.1em;
+        margin-right: 0.8em;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        font-size: 0.9em;
+        opacity: 0.9;
     }
 
     #institution-modal-body .institution-modal-value {
-        color: #f1f5f9;
+        color: #f8fafc;
         font-weight: 600;
-        font-size: 1.07em;
+        font-size: 1.1em;
+        flex: 1;
     }
 
     #institution-modal-body .institution-modal-logo {
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    #institution-modal-body .institution-modal-logo img {
+        border: 3px solid rgba(59, 130, 246, 0.3);
+        box-shadow: 0 8px 25px 0 rgba(37, 99, 235, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    #institution-modal-body .institution-modal-logo img:hover {
+        transform: scale(1.05);
+        border-color: rgba(59, 130, 246, 0.6);
+        box-shadow: 0 12px 35px 0 rgba(37, 99, 235, 0.3);
     }
 
     #institution-modal-body .concept-badge {
-        background: linear-gradient(90deg, #3b82f6 60%, #2563eb 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
         color: #fff !important;
-        border-radius: 1.1em;
-        padding: 6px 18px;
-        margin-right: 10px;
-        font-size: 1.01em;
-        font-weight: 800;
-        margin-bottom: 10px;
-        box-shadow: var(--shadow-sm);
-        letter-spacing: 0.01em;
-        transition: background 0.18s, transform 0.13s;
+        border-radius: 1.5em;
+        padding: 8px 20px;
+        margin-right: 12px;
+        font-size: 1.05em;
+        font-weight: 700;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 15px 0 rgba(59, 130, 246, 0.3);
+        letter-spacing: 0.02em;
+        transition: all 0.3s ease;
         cursor: pointer;
         border: none;
         vertical-align: middle;
+        position: relative;
+        overflow: hidden;
+    }
+
+    #institution-modal-body .concept-badge::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    #institution-modal-body .concept-badge:hover::before {
+        left: 100%;
     }
 
     #institution-modal-body .concept-badge:hover {
-        background: linear-gradient(90deg, #2563eb 60%, #1d4ed8 100%);
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
         color: #fff !important;
-        transform: scale(1.08);
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.4);
     }
 
     #institution-modal-body .institution-modal-keywords {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5em 0.7em;
-        margin-top: 0.7em;
-        margin-bottom: 1.5em;
+        gap: 0.8em 1em;
+        margin-top: 1em;
+        margin-bottom: 1.8em;
+        padding: 1.2em;
+        background: rgba(30, 41, 59, 0.2);
+        border-radius: 1.2em;
+        border: 1px solid rgba(59, 130, 246, 0.1);
     }
 
     #institution-modal-body .role-badge {
-        background: linear-gradient(90deg, #10b981 60%, #059669 100%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: #fff !important;
-        border-radius: 1.1em;
-        padding: 5px 15px;
-        margin-right: 8px;
-        font-size: 0.99em;
-        font-weight: 800;
-        margin-bottom: 8px;
-        box-shadow: var(--shadow-sm);
-        letter-spacing: 0.01em;
-        transition: background 0.18s, transform 0.13s;
+        border-radius: 1.3em;
+        padding: 6px 16px;
+        margin-right: 10px;
+        font-size: 1.02em;
+        font-weight: 700;
+        margin-bottom: 10px;
+        box-shadow: 0 3px 12px 0 rgba(16, 185, 129, 0.3);
+        letter-spacing: 0.02em;
+        transition: all 0.3s ease;
         cursor: pointer;
         border: none;
         vertical-align: middle;
+        position: relative;
+        overflow: hidden;
+    }
+
+    #institution-modal-body .role-badge::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    #institution-modal-body .role-badge:hover::before {
+        left: 100%;
     }
 
     #institution-modal-body .role-badge:hover {
-        background: linear-gradient(90deg, #059669 60%, #047857 100%);
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
         color: #fff !important;
-        transform: scale(1.08);
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.4);
     }
 
     #institution-modal-body .institution-modal-roles {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.6em;
+        gap: 0.8em;
         align-items: center;
-        margin-top: 0.2em;
-        margin-bottom: 0.2em;
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+        padding: 1em;
+        background: rgba(16, 185, 129, 0.1);
+        border-radius: 1.1em;
+        border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
     #institution-modal-body .role-badge {
@@ -3770,135 +3874,127 @@ footer.main-footer p {
         }
     }
     #institution-modal-body .lineage-item {
-        padding: 0.6em 0;
-        border-bottom: 1px solid #334155;
-        color: #f1f5f9;
-        font-weight: 700;
-        font-size: 1.01em;
+        padding: 0.8em 1em;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+        color: #f8fafc;
+        font-weight: 600;
+        font-size: 1.05em;
+        transition: all 0.3s ease;
+        position: relative;
+        border-radius: 0.5em;
+        margin-bottom: 0.3em;
     }
 
     #institution-modal-body .lineage-item:last-child {
         border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    #institution-modal-body .lineage-item:hover {
+        background: rgba(59, 130, 246, 0.1);
+        transform: translateX(5px);
+        border-left: 3px solid #3b82f6;
     }
 
     #institution-modal-body .institution-modal-lineage {
-        margin-top: 0.7em;
-        margin-bottom: 1.5em;
-        border: 1.5px solid #334155;
-        border-radius: 0.7rem;
-        padding: 0.7rem;
-        background: rgba(51, 65, 85, 0.18);
+        margin-top: 1em;
+        margin-bottom: 1.8em;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 1.2rem;
+        padding: 1.2rem;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.3) 0%, rgba(51, 65, 85, 0.2) 100%);
+        box-shadow: 0 4px 20px 0 rgba(37, 99, 235, 0.1);
     }
 
     #institution-modal-body a {
-        color: #3b82f6;
-        text-decoration: underline;
-        font-weight: 700;
-        transition: color 0.18s;
+        color: #60a5fa;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
         word-break: break-all;
+        padding: 0.2em 0.5em;
+        border-radius: 0.5em;
+        position: relative;
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.2);
     }
 
     #institution-modal-body a:hover {
-        color: #2563eb;
-        text-decoration: underline;
+        color: #3b82f6;
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px 0 rgba(59, 130, 246, 0.2);
     }
 
     @media (max-width: 700px) {
         #institution-modal .modal-content {
-            padding: 1.2rem 0.5rem 1rem 0.5rem;
+            padding: 2rem 1rem 1.5rem 1rem;
             max-width: 99vw;
-            font-size: 1.01rem;
+            font-size: 1.05rem;
+            border-radius: 1.5rem;
         }
 
         #institution-modal-body h2 {
-            font-size: 1.13rem;
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+        }
+
+        #institution-modal-body h2::after {
+            width: 50px;
+            height: 2px;
         }
 
         #institution-modal-body .institution-modal-section {
-            padding: 0.7em 0.7em;
-            font-size: 0.97em;
+            padding: 1em 1.2em;
+            font-size: 1em;
+            margin-bottom: 1.2em;
+            border-radius: 1rem;
         }
 
         #institution-modal-body .institution-modal-label {
-            min-width: 90px;
-            font-size: 0.97em;
+            min-width: 100px;
+            font-size: 0.85em;
+            margin-right: 0.6em;
+        }
+
+        #institution-modal-body .institution-modal-value {
+            font-size: 1em;
         }
 
         #institution-modal-body .concept-badge, #institution-modal-body .role-badge {
-            font-size: 0.93em;
-            padding: 3px 8px;
-            margin-right: 4px;
-            margin-bottom: 4px;
+            font-size: 0.95em;
+            padding: 6px 14px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            border-radius: 1.2em;
+        }
+
+        #institution-modal-body .institution-modal-keywords {
+            padding: 1em;
+            gap: 0.6em 0.8em;
+        }
+
+        #institution-modal-body .institution-modal-roles {
+            padding: 0.8em;
+            gap: 0.6em;
+        }
+
+        #institution-modal-body .institution-modal-lineage {
+            padding: 1rem;
+            margin-top: 0.8em;
+            margin-bottom: 1.5em;
+        }
+
+        #institution-modal-body .lineage-item {
+            padding: 0.6em 0.8em;
+            font-size: 1em;
         }
     }
 
-    /* Roller badge'leri için modern görünüm */
-    .institution-modal-roles {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5em 1em;
-        align-items: center;
-        margin-left: 0.5em;
-    }
 
-    .role-badge {
-        display: inline-flex;
-        align-items: center;
-        background: linear-gradient(90deg, #e0e7ff 60%, #f1f5f9 100%);
-        color: #2563eb;
-        border-radius: 1.2em;
-        padding: 0.32em 1.1em 0.32em 1em;
-        font-size: 1.01em;
-        font-weight: 700;
-        margin: 0 0.1em 0.2em 0;
-        border: 1.5px solid #e0e7ff;
-        box-shadow: 0 1px 6px 0 rgba(37, 99, 235, 0.07);
-        transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-        cursor: pointer;
-    }
 
-    .role-badge-count {
-        color: #64748b;
-        font-weight: 600;
-        margin-left: 0.4em;
-        font-size: 0.98em;
-    }
 
-    .role-badge:hover {
-        background: linear-gradient(90deg, #2563eb 60%, #3b82f6 100%);
-        color: #fff;
-        box-shadow: 0 4px 16px 0 rgba(37, 99, 235, 0.13);
-    }
-
-    .role-badge {
-        display: inline-block !important;
-        align-items: center;
-        background: linear-gradient(90deg, #e0e7ff 60%, #3b82f6 100%) !important;
-        color: #2563eb !important;
-        border-radius: 1.5em !important;
-        padding: 0.45em 1.3em 0.45em 1.1em !important;
-        font-size: 1.08em !important;
-        font-weight: 800 !important;
-        margin: 0 0.25em 0.25em 0 !important;
-        border: 2px solid #2563eb !important;
-        box-shadow: 0 2px 8px 0 rgba(37, 99, 235, 0.13) !important;
-        transition: background 0.18s, color 0.18s, box-shadow 0.18s !important;
-        cursor: pointer !important;
-        vertical-align: middle !important;
-    }
-
-    .role-badge-count {
-        color: #64748b !important;
-        font-weight: 700 !important;
-        margin-left: 0.5em !important;
-        font-size: 0.98em !important;
-    }
-
-    .role-badge:hover {
-        background: linear-gradient(90deg, #2563eb 60%, #1d4ed8 100%) !important;
-        color: #fff !important;
-        box-shadow: 0 4px 16px 0 rgba(37, 99, 235, 0.18) !important;
-    }
 
     /* Yazar Tüm Yayınlar Modalı için özel iyileştirme */
     #author-works-modal .modal-content {

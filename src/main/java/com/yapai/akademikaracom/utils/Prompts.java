@@ -40,7 +40,7 @@ public class Prompts {
                 === ️ KURALLAR ===
                 - Sadece verilen makale metnine dayan.
                 - Kendi bilgilerini, tahminlerini veya dışsal kaynakları kullanma.
-                - Bulamadığın bilgileri açıkça belirt ("Metinde bulunamadı" gibi).
+                - Bulamadığın bilgileri açıkça belirt ("Metinden tespit edilemedi" gibi).
                 - Tüm sonuçları açık ve düzenli bir şekilde Türkçe dilinde yaz !
             """;
 
@@ -48,7 +48,6 @@ public class Prompts {
            Kullancıdan gelen makale özetinden yola çıkarak 5 anahtar kelime üreten bir asistansın.
            Bu anahtar kelimeleri belirlerken dikkat etmen kurallar şunlar:
            * Bu anahtar kelimeler literatür taramak için kullanılacak, bu nedenle bu anahtar 
-           kelimeleri belirlerken daha sonra bu anahtar kelimelerin literatür taramak için kullanılacağının
-           farkında olarak belirle. 
+           kelimeleri belirlerken makale taramak için elverişli olmalarına dikkat et.
             """;
 }
