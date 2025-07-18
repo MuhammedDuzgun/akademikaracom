@@ -2515,13 +2515,17 @@ footer.main-footer p {
 
 /* --- Drawer (Çekmece) Filtre Paneli ve Geniş Arama Barı --- */
 .searchbar-drawer-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 2.2rem auto 1.5rem auto;
-  max-width: 1200px; /* Eskiden 900px idi, daha geniş */
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+#paper-search-error {
+  margin-top: 0.5rem;
   width: 100%;
 }
+
 .searchbar-drawer-form {
   display: flex;
   flex-direction: row;
@@ -3027,7 +3031,7 @@ footer.main-footer p {
   line-height: 1;
 }
 #author-filters-drawer {
-  width: 420px;
+  width: 600px;
   max-width: 98vw;
   min-width: 320px;
   overflow: hidden;
@@ -3035,7 +3039,7 @@ footer.main-footer p {
 #author-filters-drawer .filters-drawer-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem 1.2rem;
+  gap: 2.1rem 1.7rem;
   overflow-y: auto;
   padding-bottom: 2.5rem;
   margin-bottom: 1.7rem;
@@ -3118,7 +3122,7 @@ footer.main-footer p {
   box-shadow: 0 2px 12px 0 rgba(37,99,235,0.10);
   z-index: 1005;
   margin-top: 0.15rem;
-  min-width: 160px;
+  min-width: 280px;
   max-height: 220px;
   overflow-y: auto;
   padding: 0.1rem 0;
@@ -3126,7 +3130,7 @@ footer.main-footer p {
   transition: box-shadow 0.13s, border 0.13s;
 }
 .autocomplete-item {
-  padding: 0.38rem 0.95rem;
+  padding: 0.5rem 1.2rem;
   font-size: 0.98rem;
   color: var(--primary-dark);
   cursor: pointer;
@@ -3138,7 +3142,7 @@ footer.main-footer p {
   background: transparent;
   border-radius: 0.4rem;
   margin: 0 0.2rem;
-  min-height: 32px;
+  min-height: 36px;
 }
 .autocomplete-item:last-child {
   border-bottom: none;
@@ -3177,18 +3181,18 @@ footer.main-footer p {
 }
 @media (max-width: 600px) {
   .autocomplete-box {
-    min-width: 90px;
+    min-width: 200px;
     font-size: 0.93rem;
     border-radius: 0.4rem;
     box-shadow: 0 2px 8px 0 rgba(37,99,235,0.08);
     max-height: 140px;
   }
   .autocomplete-item {
-    padding: 0.28rem 0.5rem;
+    padding: 0.4rem 0.8rem;
     font-size: 0.93rem;
     margin: 0 0.1rem;
     border-radius: 0.3rem;
-    min-height: 26px;
+    min-height: 30px;
   }
 }
 
@@ -4413,4 +4417,12 @@ footer.main-footer p {
     margin-right: 2px;
     margin-bottom: 2px;
   }
+}
+
+.autocomplete-name, .autocomplete-hint {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
 }

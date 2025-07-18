@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gelişmiş filtreler
     const authorCountryInput = document.getElementById('author-country');
     const authorOrcidInput = document.getElementById('author-orcid');
+    const authorInstitutionInput = document.getElementById('author-institution');
     const authorCitedMinInput = document.getElementById('author-cited-min');
     const authorCitedMaxInput = document.getElementById('author-cited-max');
     const authorWorksMinInput = document.getElementById('author-works-min');
@@ -286,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Yazar filtre elementleri:', {
         authorCountryInput: !!authorCountryInput,
         authorOrcidInput: !!authorOrcidInput,
+        authorInstitutionInput: !!authorInstitutionInput,
         authorCitedMinInput: !!authorCitedMinInput,
         authorCitedMaxInput: !!authorCitedMaxInput,
         authorWorksMinInput: !!authorWorksMinInput,
@@ -307,6 +309,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const countryCode = authorCountryInput.value.trim().toUpperCase();
             if (countryCode.length === 2) {
                 filters.push(`last_known_institutions.country_code:${countryCode}`);
+            }
+        }
+        
+        // Kurum adı (OpenAlex institution search)
+        if (authorInstitutionInput && authorInstitutionInput.value.trim()) {
+            // Eğer autocomplete ile data-id atanmışsa, id ile filtrele, yoksa isimle arama
+            const instId = authorInstitutionInput.getAttribute('data-id');
+            if (instId && instId.startsWith('https://openalex.org/I')) {
+                filters.push(`last_known_institutions.id:${instId}`);
+            } else {
+                // isimle arama desteği (OpenAlex API'de tam destek yok, ama raw_institution_name.search ile deneyelim)
+                filters.push(`raw_institution_name.search:${authorInstitutionInput.value.trim()}`);
             }
         }
         
@@ -394,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Filtre değerleri:', {
             country: authorCountryInput?.value,
             orcid: authorOrcidInput?.value,
+            institution: authorInstitutionInput?.value,
             citedMin: authorCitedMinInput?.value,
             citedMax: authorCitedMaxInput?.value,
             worksMin: authorWorksMinInput?.value,
@@ -433,6 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (authorSearchForm) {
         authorSearchForm.addEventListener('submit', async (e) => {
+            lastAuthorSearchSubmit = Date.now();
             e.preventDefault();
             if (!authorSearchInput.value.trim()) return;
             authorSearchError.textContent = '';
@@ -495,7 +511,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('Yazar arama hatası:', err);
-            authorSearchResult.innerHTML = `<div class='error-message'>Yazarlar alınırken hata oluştu: ${err.message}</div>`;
+            let msg = err.message || '';
+            if (msg.includes('raw_institution_name.search is not a valid field') || msg.includes('Invalid query parameters error')) {
+                authorSearchResult.innerHTML = `<div class='error-message'>Kurum adı ile serbest metin araması desteklenmiyor, lütfen kurum adını listeden seçin.</div>`;
+            } else {
+                authorSearchResult.innerHTML = `<div class='error-message'>Yazarlar alınırken hata oluştu: ${msg}</div>`;
+            }
         } finally {
             authorSearchLoading.style.display = 'none';
         }
@@ -909,8 +930,18 @@ document.addEventListener('DOMContentLoaded', () => {
         paperSearchForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!paperSearchInput.value.trim()) return;
-            paperSearchResult.innerHTML = '';
             if (paperSearchError) paperSearchError.textContent = '';
+            // Kurum adı autocomplete ile seçilmezse arama yapılmasın, uyarı gösterilsin
+            const institutionInput = document.getElementById('institution-name');
+            if (institutionInput && institutionInput.value.trim() && !institutionInput.getAttribute('data-id')) {
+                paperSearchError.textContent = 'Kurum adı ile serbest metin araması desteklenmiyor, lütfen kurum adını listeden seçin.';
+                // Sonuçları ve sayaçları temizle
+                const paperSearchResultDiv = document.getElementById('paper-search-result');
+                if (paperSearchResultDiv) paperSearchResultDiv.innerHTML = '';
+                const searchResultCountDiv = document.getElementById('search-result-count');
+                if (searchResultCountDiv) searchResultCountDiv.innerHTML = '';
+                return;
+            }
             // Filtreleri topla
             const filters = collectFilters();
             paperCurrentPage = 1;
@@ -945,7 +976,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     paginationHtml;
             }
         } catch (err) {
-            paperSearchResult.innerHTML = `<div class='error-message'>Makaleler alınırken hata oluştu: ${err.message}</div>`;
+            let msg = err.message || '';
+            if (
+                msg.includes('raw_institution_name.search is not a valid field') ||
+                msg.includes('Invalid query parameters error')
+            ) {
+                if (paperSearchError) paperSearchError.textContent = 'Kurum adı ile serbest metin araması desteklenmiyor, lütfen kurum adını listeden seçin.';
+                return;
+            }
         } finally {
             paperSearchLoading.style.display = 'none';
         }
@@ -977,19 +1015,18 @@ document.addEventListener('DOMContentLoaded', () => {
             timeout = setTimeout(() => func.apply(this, args), wait);
         };
     }
-    const autoSearchInputs = document.querySelectorAll('.auto-search');
     function triggerAutoSearch(e) {
         // Son 500ms içinde submit olduysa tekrar tetikleme
         if (Date.now() - lastAuthorSearchSubmit < 500) return;
         if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
             paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
         }
-        // authorSearchForm için otomatik submit kaldırıldı
-        // if (authorSearchInput && authorSearchInput.value.trim().length > 0) {
-        //     authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
-        // }
+        if (authorSearchInput && authorSearchInput.value.trim().length > 0) {
+            authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
     }
     const debouncedAutoSearch = debounce(triggerAutoSearch, 400);
+    const autoSearchInputs = document.querySelectorAll('.auto-search');
     autoSearchInputs.forEach(el => {
         el.addEventListener('input', debouncedAutoSearch);
         el.addEventListener('change', debouncedAutoSearch);
@@ -1132,13 +1169,8 @@ document.addEventListener('DOMContentLoaded', () => {
             filterList.push(`raw_author_name.search:${filters.authorName}`);
         }
         // Kurum adı/id filtresi
-        if (filters.institutionName) {
-            const instInput = document.getElementById('institution-name');
-            const instId = instInput && instInput.getAttribute('data-id');
-            if (instId && instId.startsWith('https://openalex.org/I')) {
-                filterList.push(`institutions.id:${instId}`);
-            }
-            // isimle arama desteği yok, başka bir şey ekleme
+        if (filters.institutionId && filters.institutionId.startsWith('https://openalex.org/I')) {
+            filterList.push(`institutions.id:${filters.institutionId}`);
         }
         
         // Filtreleri ekle
@@ -1260,9 +1292,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         // Kurum adı
-        const institutionName = document.getElementById('institution-name').value;
-        if (institutionName) {
+        const institutionInput = document.getElementById('institution-name');
+        const institutionName = institutionInput.value;
+        const institutionId = institutionInput.getAttribute('data-id');
+        if (institutionName && institutionId && institutionId.startsWith('https://openalex.org/I')) {
             filters.institutionName = institutionName;
+            filters.institutionId = institutionId;
         }
         
         return filters;
@@ -1308,6 +1343,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function clearAuthorFilters() {
         document.getElementById('author-country').value = '';
         document.getElementById('author-orcid').value = '';
+        document.getElementById('author-institution').value = '';
+        document.getElementById('author-institution').removeAttribute('data-id');
         document.getElementById('author-cited-min').value = '';
         document.getElementById('author-cited-max').value = '';
         document.getElementById('author-works-min').value = '';
@@ -2211,9 +2248,12 @@ document.addEventListener('DOMContentLoaded', () => {
         filters.authorName = authorName;
     }
     // Kurum adı
-    const institutionName = document.getElementById('institution-name').value;
-    if (institutionName) {
+    const institutionInput = document.getElementById('institution-name');
+    const institutionName = institutionInput.value;
+    const institutionId = institutionInput.getAttribute('data-id');
+    if (institutionName && institutionId && institutionId.startsWith('https://openalex.org/I')) {
         filters.institutionName = institutionName;
+        filters.institutionId = institutionId;
     }
 
     // --- AUTOCOMPLETE (YAZAR ADI) ---
@@ -2289,7 +2329,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                if (authorNameAutocompleteResults.length && authorNameAutocompleteBox && authorNameAutocompleteBox.style.display !== 'none') {
+                    if (authorNameAutocompleteSelected >= 0 && authorNameAutocompleteResults[authorNameAutocompleteSelected]) {
+                        e.preventDefault();
+                        input.value = authorNameAutocompleteResults[authorNameAutocompleteSelected].display_name;
+                        input.setAttribute('data-id', authorNameAutocompleteResults[authorNameAutocompleteSelected].id);
+                        clearAuthorNameAutocomplete();
+                        // Otomatik arama formunu submit et
+                        const paperSearchForm = document.getElementById('paper-search-form');
+                        if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    } else {
+                        // Seçili öğe yoksa sadece autocomplete'i kapat
+                        clearAuthorNameAutocomplete();
+                    }
+                }
+                return;
+            }
+            
             if (!authorNameAutocompleteResults.length || !authorNameAutocompleteBox || authorNameAutocompleteBox.style.display === 'none') return;
+            
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 authorNameAutocompleteSelected = (authorNameAutocompleteSelected + 1) % authorNameAutocompleteResults.length;
@@ -2305,16 +2364,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const items = authorNameAutocompleteBox.querySelectorAll('.autocomplete-item');
                 if (items[authorNameAutocompleteSelected]) {
                     items[authorNameAutocompleteSelected].scrollIntoView({ block: 'nearest' });
-                }
-            } else if (e.key === 'Enter') {
-                if (authorNameAutocompleteSelected >= 0 && authorNameAutocompleteResults[authorNameAutocompleteSelected]) {
-                    e.preventDefault();
-                    input.value = authorNameAutocompleteResults[authorNameAutocompleteSelected].display_name;
-                    input.setAttribute('data-id', authorNameAutocompleteResults[authorNameAutocompleteSelected].id);
-                    clearAuthorNameAutocomplete();
-                    // Otomatik arama formunu submit et
-                    const paperSearchForm = document.getElementById('paper-search-form');
-                    if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
                 }
             } else if (e.key === 'Escape') {
                 clearAuthorNameAutocomplete();
@@ -2332,6 +2381,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const paperSearchForm = document.getElementById('paper-search-form');
                     if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
                 }
+            }
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target !== input && (!authorNameAutocompleteBox || !authorNameAutocompleteBox.contains(e.target))) {
+                clearAuthorNameAutocomplete();
             }
         });
     }
@@ -2408,7 +2462,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                if (institutionNameAutocompleteResults.length && institutionNameAutocompleteBox && institutionNameAutocompleteBox.style.display !== 'none') {
+                    if (institutionNameAutocompleteSelected >= 0 && institutionNameAutocompleteResults[institutionNameAutocompleteSelected]) {
+                        e.preventDefault();
+                        input.value = institutionNameAutocompleteResults[institutionNameAutocompleteSelected].display_name;
+                        input.setAttribute('data-id', institutionNameAutocompleteResults[institutionNameAutocompleteSelected].id);
+                        clearInstitutionNameAutocomplete();
+                        // Otomatik arama formunu submit et
+                        const paperSearchForm = document.getElementById('paper-search-form');
+                        if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    } else {
+                        // Seçili öğe yoksa sadece autocomplete'i kapat
+                        clearInstitutionNameAutocomplete();
+                    }
+                }
+                return;
+            }
+            
             if (!institutionNameAutocompleteResults.length || !institutionNameAutocompleteBox || institutionNameAutocompleteBox.style.display === 'none') return;
+            
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 institutionNameAutocompleteSelected = (institutionNameAutocompleteSelected + 1) % institutionNameAutocompleteResults.length;
@@ -2424,16 +2497,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const items = institutionNameAutocompleteBox.querySelectorAll('.autocomplete-item');
                 if (items[institutionNameAutocompleteSelected]) {
                     items[institutionNameAutocompleteSelected].scrollIntoView({ block: 'nearest' });
-                }
-            } else if (e.key === 'Enter') {
-                if (institutionNameAutocompleteSelected >= 0 && institutionNameAutocompleteResults[institutionNameAutocompleteSelected]) {
-                    e.preventDefault();
-                    input.value = institutionNameAutocompleteResults[institutionNameAutocompleteSelected].display_name;
-                    input.setAttribute('data-id', institutionNameAutocompleteResults[institutionNameAutocompleteSelected].id);
-                    clearInstitutionNameAutocomplete();
-                    // Otomatik arama formunu submit et
-                    const paperSearchForm = document.getElementById('paper-search-form');
-                    if (paperSearchForm) paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
                 }
             } else if (e.key === 'Escape') {
                 clearInstitutionNameAutocomplete();
@@ -2498,13 +2561,28 @@ document.addEventListener('DOMContentLoaded', () => {
             `).join('');
             box.style.display = 'block';
             positionBox();
+            // Her render sonrası event ekle
+            const itemsEls = box.querySelectorAll('.autocomplete-item');
+            itemsEls.forEach((el, idx) => {
+                el.onmousedown = function(e) {
+                    e.preventDefault();
+                    input.value = items[idx].display_name;
+                    input.setAttribute('data-id', items[idx].id);
+                    clearBox();
+                    // Otomatik arama formunu submit et
+                    const authorSearchInput = document.getElementById('author-search-input');
+                    const authorSearchForm = document.getElementById('author-search-form');
+                    if (authorSearchForm && authorSearchInput && authorSearchInput.value.trim().length > 0) {
+                        authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    }
+                };
+            });
         }
         function clearBox() {
             if (box) { box.innerHTML = ''; box.style.display = 'none'; }
             results = []; selected = -1;
         }
         input.addEventListener('input', async function() {
-            // Elle yazınca data-id temizle
             input.removeAttribute('data-id');
             const val = input.value.trim();
             if (val.length < 2) { clearBox(); return; }
@@ -2534,6 +2612,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     input.value = results[selected].display_name;
                     input.setAttribute('data-id', results[selected].id);
                     clearBox();
+                    // Otomatik arama formunu submit et
+                    const authorSearchInput = document.getElementById('author-search-input');
+                    const authorSearchForm = document.getElementById('author-search-form');
+                    if (authorSearchForm && authorSearchInput && authorSearchInput.value.trim().length > 0) {
+                        authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    }
                 } else {
                     clearBox();
                 }
@@ -2544,20 +2628,148 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('click', function(e) {
             if (e.target !== input && (!box || !box.contains(e.target))) clearBox();
         });
-        // Mouse ile seçim
-        document.addEventListener('mousedown', function(e) {
-            if (!box || box.style.display === 'none') return;
-            const item = e.target.closest('.autocomplete-item');
-            if (item) {
-                const idx = parseInt(item.getAttribute('data-idx'), 10);
-                if (results[idx]) {
-                    input.value = results[idx].display_name;
-                    input.setAttribute('data-id', results[idx].id);
+    })();
+
+    // --- AUTOCOMPLETE (KURUM ADI, YAZAR FİLTRESİ) ---
+    // Yazar filtrelerinde kurum adı autocomplete
+    if (document.getElementById('author-institution')) {
+        let box, results = [], selected = -1;
+        const input = document.getElementById('author-institution');
+        function createBox() {
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'autocomplete-box';
+                box.style.position = 'absolute';
+                box.style.zIndex = 1000;
+                box.style.minWidth = input.offsetWidth + 'px';
+                input.parentNode.appendChild(box);
+            }
+            box.innerHTML = '';
+            box.style.display = 'none';
+        }
+        function positionBox() {
+            if (!box) return;
+            box.style.top = (input.offsetTop + input.offsetHeight) + 'px';
+            box.style.left = input.offsetLeft + 'px';
+            box.style.minWidth = input.offsetWidth + 'px';
+        }
+        async function fetchInstitutions(q) {
+            const url = `https://api.openalex.org/autocomplete/institutions?q=${encodeURIComponent(q)}`;
+            const resp = await fetch(url);
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            return data.results || [];
+        }
+        function renderBox(items) {
+            if (!box) createBox();
+            if (!items || items.length === 0) { box.style.display = 'none'; return; }
+            box.innerHTML = items.map((item, idx) => `
+                <div class='autocomplete-item${idx === selected ? ' selected' : ''}' data-idx='${idx}'>
+                    <span class='autocomplete-name'>${escapeHtml(item.display_name)}</span>
+                    ${item.hint ? `<span class='autocomplete-hint'>${escapeHtml(item.hint)}</span>` : ''}
+                </div>
+            `).join('');
+            box.style.display = 'block';
+            positionBox();
+            // Her render sonrası event ekle
+            const itemsEls = box.querySelectorAll('.autocomplete-item');
+            itemsEls.forEach((el, idx) => {
+                el.onmousedown = function(e) {
+                    e.preventDefault();
+                    input.value = items[idx].display_name;
+                    input.setAttribute('data-id', items[idx].id);
+                    clearBox();
+                    // Otomatik arama formunu submit et
+                    const authorSearchInput = document.getElementById('author-search-input');
+                    const authorSearchForm = document.getElementById('author-search-form');
+                    if (authorSearchForm && authorSearchInput && authorSearchInput.value.trim().length > 0) {
+                        authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    }
+                };
+            });
+        }
+        function clearBox() {
+            if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+            results = []; selected = -1;
+        }
+        input.addEventListener('input', async function() {
+            input.removeAttribute('data-id');
+            const val = input.value.trim();
+            if (val.length < 2) { clearBox(); return; }
+            try {
+                const items = await fetchInstitutions(val);
+                results = items; selected = -1;
+                renderBox(items);
+            } catch { clearBox(); }
+        });
+        input.addEventListener('keydown', function(e) {
+            if (!results.length || !box || box.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selected = (selected + 1) % results.length;
+                renderBox(results);
+                const items = box.querySelectorAll('.autocomplete-item');
+                if (items[selected]) items[selected].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selected = (selected - 1 + results.length) % results.length;
+                renderBox(results);
+                const items = box.querySelectorAll('.autocomplete-item');
+                if (items[selected]) items[selected].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (selected >= 0 && results[selected]) {
+                    e.preventDefault();
+                    input.value = results[selected].display_name;
+                    input.setAttribute('data-id', results[selected].id);
+                    clearBox();
+                    // Otomatik arama formunu submit et
+                    const authorSearchInput = document.getElementById('author-search-input');
+                    const authorSearchForm = document.getElementById('author-search-form');
+                    if (authorSearchForm && authorSearchInput && authorSearchInput.value.trim().length > 0) {
+                        authorSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                    }
+                } else {
                     clearBox();
                 }
+            } else if (e.key === 'Escape') {
+                clearBox();
             }
         });
-    })();
+        document.addEventListener('click', function(e) {
+            if (e.target !== input && (!box || !box.contains(e.target))) clearBox();
+        });
+    }
+
+    // --- Kurum Adı Otomatik Arama (Makale Bul) ---
+    const institutionNameInput = document.getElementById('institution-name');
+    if (institutionNameInput) {
+        // input veya change eventinde otomatik arama tetikle
+        institutionNameInput.addEventListener('input', function() {
+            // data-id sıfırlanırsa da arama tetiklenmeli
+            institutionNameInput.removeAttribute('data-id');
+            if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
+                debouncedAutoSearch();
+            }
+        });
+        // autocomplete seçiminde (mousedown) otomatik arama tetikle
+        // (autocomplete kutusu zaten var, event ekle)
+        setTimeout(() => {
+            const autocompleteBox = document.querySelector('#institution-name ~ .autocomplete-box');
+            if (autocompleteBox) {
+                autocompleteBox.addEventListener('mousedown', function(e) {
+                    const item = e.target.closest('.autocomplete-item');
+                    if (item) {
+                        // Seçimden hemen sonra arama tetikle
+                        setTimeout(() => {
+                            if (paperSearchInput && paperSearchInput.value.trim().length > 0) {
+                                paperSearchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                            }
+                        }, 10);
+                    }
+                });
+            }
+        }, 500); // autocomplete kutusu oluştuğunda ekle
+    }
 }); 
 
 // Makale detay modalı render fonksiyonu
