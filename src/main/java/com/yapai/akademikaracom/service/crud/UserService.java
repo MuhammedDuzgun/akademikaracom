@@ -1,6 +1,7 @@
 package com.yapai.akademikaracom.service.crud;
 
 import com.yapai.akademikaracom.dto.UserDto;
+import com.yapai.akademikaracom.entity.Library;
 import com.yapai.akademikaracom.entity.User;
 import com.yapai.akademikaracom.exception.ResourceNotFoundException;
 import com.yapai.akademikaracom.repository.UserRepository;
@@ -32,8 +33,10 @@ public class UserService {
         String lastName = oAuth2User.getAttribute("family_name");
         String picture = oAuth2User.getAttribute("picture");
 
+        Library library = new Library();
+
         if (!userRepository.existsByEmail(email)) {
-            User user = new User(firstName, lastName, email, picture);
+            User user = new User(firstName, lastName, email, picture, library);
             userRepository.save(user);
         }
     }
