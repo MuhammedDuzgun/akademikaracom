@@ -22,17 +22,22 @@ public class User {
 
     private String picture;
 
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "library_id", unique = true)
+    private Library library;
+
     @CreationTimestamp
     private LocalDateTime dateCreation;
 
     public User() {
     }
 
-    public User(String firstName, String lastName, String email, String picture) {
+    public User(String firstName, String lastName, String email, String picture, Library library) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.picture = picture;
+        this.library = library;
     }
 
     public Long getId() {
@@ -73,5 +78,13 @@ public class User {
 
     public void setPicture(String picture) {
         this.picture = picture;
+    }
+
+    public Library getLibrary() {
+        return library;
+    }
+
+    public void setLibrary(Library library) {
+        this.library = library;
     }
 }
