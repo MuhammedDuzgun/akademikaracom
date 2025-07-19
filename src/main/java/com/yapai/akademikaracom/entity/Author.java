@@ -13,7 +13,7 @@ public class Author {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String openAlexId;
 
     @ManyToMany(mappedBy = "authorList")
