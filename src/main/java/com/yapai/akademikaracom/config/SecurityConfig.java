@@ -39,8 +39,9 @@ public class SecurityConfig {
                                     "/main.js").permitAll();
                             registry.requestMatchers("/test/**").permitAll();
                             registry.requestMatchers("/login").permitAll();
-                            registry.requestMatchers("/**").permitAll();
-                            registry.anyRequest().permitAll();
+                            registry.requestMatchers("/api/v1/articles/**").permitAll();
+                            registry.requestMatchers("/api/v1/users/**").authenticated();
+                            registry.requestMatchers("/api/v1/libraries/**").authenticated();
                         })
                         .oauth2Login(oauth2login -> {
                             oauth2login.loginPage("/login");
@@ -60,5 +61,4 @@ public class SecurityConfig {
                                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                         .build();
     }
-
 }
