@@ -150,57 +150,36 @@ document.addEventListener('DOMContentLoaded', () => {
         openalexResult.innerHTML = '<div class="loading">OpenAlex makaleleri yükleniyor...</div>';
         try {
             const papersByKeyword = await fetchAllKeywordsPapers(keywords);
-            openalexResult.innerHTML = renderOpenAlexResults(papersByKeyword);
+            openalexResult.innerHTML = await renderOpenAlexResults(papersByKeyword);
+            // Kaydet butonları için event listener'ları ekle
+            await afterRenderPaperSearchResults();
+            await afterRenderRemoveWorkBtns();
         } catch (err) {
             openalexResult.innerHTML = `<div class='error-message'>OpenAlex makaleleri alınırken hata oluştu: ${err.message}</div>`;
         }
     }
 
-    function renderOpenAlexResults(papersByKeyword) {
-        return papersByKeyword.map(group => `
-            <div class="keyword-group">
-                <h3>🔑 ${escapeHtml(group.keyword)}</h3>
-                <div class="papers-list">
-                    ${group.papers.map(renderOpenAlexPaper).join('')}
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function renderOpenAlexPaper(paper) {
-        // Yazar listesini kısalt (ilk 3 yazar + "ve diğerleri")
-        const allAuthors = (paper.authorships || []).map(a => escapeHtml(a.author.display_name));
-        let authors = '';
-        if (allAuthors.length > 0) {
-            if (allAuthors.length <= 3) {
-                authors = allAuthors.join(', ');
-            } else {
-                authors = allAuthors.slice(0, 3).join(', ') + ` ve ${allAuthors.length - 3} diğer`;
-            }
-        }
+    async function renderOpenAlexResults(papersByKeyword) {
+        // Giriş ve kaydedilen makaleler kontrolü
+        const loggedIn = await isUserLoggedIn();
+        const savedIds = loggedIn ? await getSavedWorkIds() : [];
         
-        const venue = paper.primary_location && paper.primary_location.source
-            ? escapeHtml(paper.primary_location.source.display_name)
-            : '';
-        const pdf = paper.primary_location && paper.primary_location.pdf_url
-            ? `<a href="${paper.primary_location.pdf_url}" target="_blank" title="PDF"><span style='font-size:1.1em;'>📄</span> PDF</a>` : '';
-        const doi = paper.doi ? `<a href="${paper.doi}" target="_blank" title="DOI"><span style='font-size:1.1em;'>🔗</span> DOI</a>` : '';
-        const year = paper.publication_year ? `<span title='Yayın Yılı'>📅 ${paper.publication_year}</span>` : '';
-        const cited = typeof paper.cited_by_count === 'number' ? `<span title='Atıf Sayısı'>⭐ ${paper.cited_by_count}</span>` : '';
-        // Başlık tıklanabilir ve data-work-id ile
-        return `
-            <div class="paper-card">
-                <div class="paper-title"><a href="#" class="work-detail-link" data-work-id="${paper.id}">${escapeHtml(paper.title)}</a></div>
-                <div class="paper-meta">
-                    ${authors ? `<span>👤 ${authors}</span>` : ''}
-                    ${venue ? `<span>📚 ${venue}</span>` : ''}
-                    ${year}
-                    ${cited}
-                    ${doi}
-                    ${pdf}
+        console.log('Literatür araştır - Giriş durumu:', loggedIn);
+        console.log('Literatür araştır - Kaydedilen makale ID\'leri:', savedIds);
+        
+        const results = await Promise.all(papersByKeyword.map(async group => {
+            const cards = await Promise.all(group.papers.map(p => renderPaperCardWithSave(p, savedIds, loggedIn)));
+            return `
+                <div class="keyword-group">
+                    <h3>🔑 ${escapeHtml(group.keyword)}</h3>
+                    <div class="papers-list">
+                        ${cards.join('')}
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }));
+        
+        return results.join('');
     }
 
     // PDF analiz sonucu render fonksiyonu
@@ -776,8 +755,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let paginationHtml = renderInstitutionPagination(page, institutionTotalPages);
                 institutionSearchResult.innerHTML =
                     paginationHtml +
-                    renderInstitutionSearchResults(data.results) +
+                    await renderInstitutionSearchResults(data.results) +
                     paginationHtml;
+                await afterRenderInstitutionSearchResults();
             }
         } catch (err) {
             institutionSearchResult.innerHTML = `<div class='error-message'>Kurumlar alınırken hata oluştu: ${err.message}</div>`;
@@ -798,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function renderInstitutionSearchResults(institutions) {
+    async function renderInstitutionSearchResults(institutions) {
         const count = institutionTotalCount || (institutions && institutions.length ? institutions.length : 0);
         const countHtml = `<div class='search-result-count'><span><b>${count}</b></span> <span>kurum bulundu</span></div>`;
         const countDiv = document.getElementById('institution-search-result-count');
@@ -814,7 +794,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!institutions || institutions.length === 0) {
             return `<div class="error-message">Kurum bulunamadı.</div>`;
         }
-        return `<div class='papers-list'>${institutions.map(renderInstitutionCard).join('')}</div>`;
+        
+        // Kullanıcının giriş durumunu ve kaydedilen kurumları kontrol et
+        const loggedIn = await isUserLoggedIn();
+        const savedIds = loggedIn ? await getSavedInstitutionIds() : [];
+        
+        // Kurum kartlarını kaydetme butonları ile render et
+        const cards = await Promise.all(institutions.map(inst => renderInstitutionCardWithSave(inst, savedIds, loggedIn)));
+        return `<div class='papers-list'>${cards.join('')}</div>`;
     }
 
     function renderInstitutionCard(inst) {
@@ -972,8 +959,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let paginationHtml = renderPaperPagination(page, paperTotalPages);
                 paperSearchResult.innerHTML =
                     paginationHtml +
-                    renderPaperSearchResults(data.results) +
+                    await renderPaperSearchResults(data.results) +
                     paginationHtml;
+                await afterRenderPaperSearchResults();
             }
         } catch (err) {
             let msg = err.message || '';
@@ -1428,7 +1416,9 @@ document.addEventListener('DOMContentLoaded', () => {
         loading.style.display = 'block';
         result.innerHTML = '';
         try {
-            const resp = await fetch('/api/v1/users/profile');
+            const resp = await fetch('/api/v1/users/profile', {
+                credentials: 'include'
+            });
             if (resp.status === 401) {
                 window.location.href = '/login.html';
                 return;
@@ -1444,12 +1434,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderProfile(user) {
-        let html = `<div class='profile-card'>`;
-        if (user.picture) html += `<img class='profile-avatar' src='${escapeHtml(user.picture)}' alt='Profil Fotoğrafı'>`;
-        html += `<div class='profile-name'>${escapeHtml(user.firstName || '')} ${escapeHtml(user.lastName || '')}</div>`;
-        html += `<div class='profile-email'>${escapeHtml(user.email || '')}</div>`;
-        html += `</div>`;
-        return html;
+        // Sadece sağ üstte, küçük ve yuvarlak profil fotoğrafı
+        if (user.picture) {
+            return `<img class='profile-avatar' src='${escapeHtml(user.picture)}' alt='Profil Fotoğrafı' style="width:40px;height:40px;border-radius:50%;object-fit:cover;position:fixed;top:18px;right:24px;z-index:1001;box-shadow:0 1px 4px 0 rgba(0,0,0,0.10);">`;
+        }
+        return '';
+    }
+
+    // Makale kartı render fonksiyonu (buton eklenmiş hali)
+    async function renderPaperCardWithSave(paper, savedIds, loggedIn) {
+        const allAuthors = (paper.authorships || []).map(a => escapeHtml(a.author.display_name));
+        let authors = '';
+        if (allAuthors.length > 0) {
+            if (allAuthors.length <= 3) {
+                authors = allAuthors.join(', ');
+            } else {
+                authors = allAuthors.slice(0, 3).join(', ') + ` ve ${allAuthors.length - 3} diğer`;
+            }
+        }
+        const venue = paper.primary_location && paper.primary_location.source
+            ? escapeHtml(paper.primary_location.source.display_name)
+            : '';
+        const pdf = paper.primary_location && paper.primary_location.pdf_url
+            ? `<a href="${paper.primary_location.pdf_url}" target="_blank" title="PDF"><span style='font-size:1.1em;'>📄</span> PDF</a>` : '';
+        const doi = paper.doi ? `<a href="${paper.doi}" target="_blank" title="DOI"><span style='font-size:1.1em;'>🔗</span> DOI</a>` : '';
+        const year = paper.publication_year ? `<span title='Yayın Yılı'>📅 ${paper.publication_year}</span>` : '';
+        const cited = typeof paper.cited_by_count === 'number' ? `<span title='Atıf Sayısı'>⭐ ${paper.cited_by_count}</span>` : '';
+        
+        // Kitaplığa kaydet butonu
+        let saveBtn = '';
+        let removeBtn = '';
+        if (loggedIn) {
+            const openAlexId = paper.id.startsWith('https://openalex.org/') ? paper.id.split('/').pop() : paper.id;
+            if (savedIds.includes(openAlexId)) {
+                saveBtn = `<button class="btn-primary save-work-btn" data-work-id="${openAlexId}" disabled>Kaydedildi</button>`;
+                removeBtn = `<button class="btn-secondary remove-work-btn" data-work-id="${openAlexId}">Kaldır</button>`;
+            } else {
+                saveBtn = `<button class="btn-primary save-work-btn" data-work-id="${openAlexId}">Kitaplığa Kaydet</button>`;
+            }
+        }
+        
+        // Başlık tıklanabilir ve data-work-id ile
+        return `
+            <div class="paper-card">
+                <div class="paper-title"><a href="#" class="work-detail-link" data-work-id="${paper.id}">${escapeHtml(paper.title)}</a></div>
+                <div class="paper-meta">
+                    ${authors ? `<span>👤 ${authors}</span>` : ''}
+                    ${venue ? `<span>📚 ${venue}</span>` : ''}
+                    ${year}
+                    ${cited}
+                    ${doi}
+                    ${pdf}
+                </div>
+                ${(saveBtn || removeBtn) ? `<div class='paper-meta'>${saveBtn} ${removeBtn}</div>` : ''}
+            </div>
+        `;
     }
 
     function renderPaperCard(paper) {
@@ -1486,7 +1525,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    function renderPaperSearchResults(papers) {
+    // Makale arama sonuçlarını render eden fonksiyonu güncelle
+    async function renderPaperSearchResults(papers) {
         const count = paperTotalCount || (papers && papers.length ? papers.length : 0);
         const countHtml = `<div class='search-result-count'><span><b>${count}</b></span> <span>makale bulundu</span></div>`;
         // Sonuç sayısını arama barının altındaki kutuya yaz
@@ -1495,7 +1535,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!papers || papers.length === 0) {
             return `<div class="error-message">Makale bulunamadı.</div>`;
         }
-        return `<div class='papers-list'>${papers.map(renderPaperCard).join('')}</div>`;
+        // Giriş ve kaydedilen makaleler kontrolü
+        const loggedIn = await isUserLoggedIn();
+        const savedIds = loggedIn ? await getSavedWorkIds() : [];
+        // Her kartı async render et
+        const cards = await Promise.all(papers.map(p => renderPaperCardWithSave(p, savedIds, loggedIn)));
+        return `<div class='papers-list'>${cards.join('')}</div>`;
     }
 
     // --- AUTOCOMPLETE ---
@@ -2770,7 +2815,587 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 500); // autocomplete kutusu oluştuğunda ekle
     }
+
+    // Profil sekmesi sekme tıklama ve içerik yönetimi
+    if (document.getElementById('profile-section')) {
+        document.querySelectorAll('.profile-tab').forEach(tab => {
+            tab.addEventListener('click', async function() {
+                document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const tabName = tab.getAttribute('data-tab');
+                const tabContent = document.getElementById('profile-tab-content');
+                if (tabName === 'articles') {
+                    tabContent.innerHTML = '<div class="loading">Kaydedilen makaleler yükleniyor...</div>';
+                    try {
+                        const ids = await getSavedWorkIds();
+                        console.log('Kaydedilen makale ID\'leri:', ids);
+                        if (!ids.length) {
+                            tabContent.innerHTML = '<div class="error-message">Makale kaydetmediniz.</div>';
+                            return;
+                        }
+                        // OpenAlex API'den toplu makale çek (max 50 id birleştirilebilir)
+                        const chunks = [];
+                        for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+                        let works = [];
+                        for (const chunk of chunks) {
+                            const url = `https://api.openalex.org/works?filter=openalex_id:${chunk.join('|')}`;
+                            console.log('OpenAlex API URL:', url);
+                            const resp = await fetch(url);
+                            if (!resp.ok) {
+                                const errorText = await resp.text();
+                                console.error('OpenAlex API Error:', resp.status, errorText);
+                                throw new Error(`OpenAlex API hatası (${resp.status}): ${errorText}`);
+                            }
+                            const data = await resp.json();
+                            console.log('OpenAlex API Response:', data);
+                            if (Array.isArray(data.results)) works = works.concat(data.results);
+                        }
+                        if (!works.length) {
+                            tabContent.innerHTML = '<div class="error-message">Makale detayları alınamadı.</div>';
+                            return;
+                        }
+                        // Giriş kontrolü ve kartları oluştur
+                        const loggedIn = await isUserLoggedIn();
+                        const cards = await Promise.all(works.map(w => renderPaperCardWithSave(w, ids, loggedIn)));
+                        tabContent.innerHTML = `<div class='papers-list'>${cards.join('')}</div>`;
+                        await afterRenderRemoveWorkBtns();
+                    } catch (err) {
+                        tabContent.innerHTML = `<div class='error-message'>Makaleler alınırken hata oluştu: ${err.message}</div>`;
+                    }
+                } else if (tabName === 'authors') {
+                    tabContent.innerHTML = '<div class="loading">Kaydedilen yazarlar yükleniyor...</div>';
+                    try {
+                        const ids = await getSavedAuthorIds();
+                        if (!ids.length) {
+                            tabContent.innerHTML = '<div class="error-message">Yazar kaydetmediniz.</div>';
+                            return;
+                        }
+                        // OpenAlex API'den toplu yazar çek (max 50 id birleştirilebilir)
+                        const chunks = [];
+                        for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+                        let authors = [];
+                        for (const chunk of chunks) {
+                            const url = `https://api.openalex.org/authors?filter=openalex_id:${chunk.join('|')}`;
+                            console.log('OpenAlex Authors API URL:', url);
+                            const resp = await fetch(url);
+                            if (!resp.ok) {
+                                const errorText = await resp.text();
+                                console.error('OpenAlex Authors API Error:', resp.status, errorText);
+                                throw new Error(`OpenAlex API hatası (${resp.status}): ${errorText}`);
+                            }
+                            const data = await resp.json();
+                            console.log('OpenAlex Authors API Response:', data);
+                            if (Array.isArray(data.results)) authors = authors.concat(data.results);
+                        }
+                        if (!authors.length) {
+                            tabContent.innerHTML = '<div class="error-message">Yazar detayları alınamadı.</div>';
+                            return;
+                        }
+                        // Giriş kontrolü ve kartları oluştur
+                        const loggedIn = await isUserLoggedIn();
+                        const cards = await Promise.all(authors.map(a => renderAuthorCardWithSave(a, ids, loggedIn)));
+                        tabContent.innerHTML = `<div class='papers-list'>${cards.join('')}</div>`;
+                        await afterRenderRemoveAuthorBtns();
+                    } catch (err) {
+                        tabContent.innerHTML = `<div class='error-message'>Yazarlar alınırken hata oluştu: ${err.message}</div>`;
+                    }
+                } else if (tabName === 'institutions') {
+                    tabContent.innerHTML = '<div class="loading">Kaydedilen kurumlar yükleniyor...</div>';
+                    try {
+                        const ids = await getSavedInstitutionIds();
+                        if (!ids.length) {
+                            tabContent.innerHTML = '<div class="error-message">Kurum kaydetmediniz.</div>';
+                            return;
+                        }
+                        // OpenAlex API'den toplu kurum çek (max 50 id birleştirilebilir)
+                        const chunks = [];
+                        for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+                        let institutions = [];
+                        for (const chunk of chunks) {
+                            const url = `https://api.openalex.org/institutions?filter=openalex_id:${chunk.join('|')}`;
+                            console.log('OpenAlex Institutions API URL:', url);
+                            const resp = await fetch(url);
+                            if (!resp.ok) {
+                                const errorText = await resp.text();
+                                console.error('OpenAlex Institutions API Error:', resp.status, errorText);
+                                throw new Error(`OpenAlex API hatası (${resp.status}): ${errorText}`);
+                            }
+                            const data = await resp.json();
+                            console.log('OpenAlex Institutions API Response:', data);
+                            if (Array.isArray(data.results)) institutions = institutions.concat(data.results);
+                        }
+                        if (!institutions.length) {
+                            tabContent.innerHTML = '<div class="error-message">Kurum detayları alınamadı.</div>';
+                            return;
+                        }
+                        // Giriş kontrolü ve kartları oluştur
+                        const loggedIn = await isUserLoggedIn();
+                        const cards = await Promise.all(institutions.map(inst => renderInstitutionCardWithSave(inst, ids, loggedIn)));
+                        tabContent.innerHTML = `<div class='papers-list'>${cards.join('')}</div>`;
+                        await afterRenderRemoveInstitutionBtns();
+                    } catch (err) {
+                        tabContent.innerHTML = `<div class='error-message'>Kurumlar alınırken hata oluştu: ${err.message}</div>`;
+                    }
+                }
+            });
+        });
+        // Sayfa ilk açıldığında Makale Analizlerim sekmesi aktif
+        const tabContent = document.getElementById('profile-tab-content');
+        if (tabContent) {
+            tabContent.innerHTML = '<div style="padding:2em 0 0 0;text-align:center;color:#888;">Henüz analiz kaydetmediniz.</div>';
+        }
+    }
+
+    // Kullanıcının kitaplığındaki yazar id'lerini almak için fonksiyon
+    async function getSavedAuthorIds() {
+        try {
+            const resp = await fetch('/api/v1/libraries/authors', { credentials: 'include' });
+            if (!resp.ok) return [];
+            const authors = await resp.json();
+            return Array.isArray(authors) ? authors.map(a => a.openAlexId) : [];
+        } catch { return []; }
+    }
+
+    // Kullanıcının kitaplığındaki kurum id'lerini almak için fonksiyon
+    async function getSavedInstitutionIds() {
+        try {
+            const resp = await fetch('/api/v1/libraries/institutions', { credentials: 'include' });
+            if (!resp.ok) return [];
+            const institutions = await resp.json();
+            return Array.isArray(institutions) ? institutions.map(i => i.openAlexId) : [];
+        } catch { return []; }
+    }
+
+    // Kurum kartı render fonksiyonu (buton eklenmiş hali)
+    async function renderInstitutionCardWithSave(inst, savedIds, loggedIn) {
+        const country = inst.country_code ? `<span class='institution-meta-badge' title='Ülke'>🌍 Ülke: ${inst.country_code.toUpperCase()}</span>` : '';
+        const type = inst.type ? `<span class='institution-meta-badge' title='Tür'>🏷️ Tür: ${escapeHtml(inst.type)}</span>` : '';
+        const city = inst.city ? `<span class='institution-meta-badge' title='Şehir'>🏙️ Şehir: ${escapeHtml(inst.city)}</span>` : '';
+        const region = inst.region ? `<span class='institution-meta-badge' title='Bölge'>🗺️ Bölge: ${escapeHtml(inst.region)}</span>` : '';
+        const cited = typeof inst.cited_by_count === 'number' ? `<span class='institution-meta-badge' title='Toplam Atıf'>⭐ Toplam Atıf: ${inst.cited_by_count.toLocaleString()}</span>` : '';
+        // h-index, i10-index, 2Y atıf ortalaması
+        const hindex = inst.summary_stats && typeof inst.summary_stats.h_index === 'number' ? `<span class='institution-meta-badge' title='h-index'>h-index: ${inst.summary_stats.h_index}</span>` : '';
+        const i10 = inst.summary_stats && typeof inst.summary_stats.i10_index === 'number' ? `<span class='institution-meta-badge' title='i10-index'>i10: ${inst.summary_stats.i10_index}</span>` : '';
+        const meanCited = inst.summary_stats && typeof inst.summary_stats['2yr_mean_citedness'] === 'number' ? `<span class='institution-meta-badge' title='2 Yıllık Ortalama Atıf'>2Y Atıf Ort: ${inst.summary_stats['2yr_mean_citedness'].toFixed(2)}</span>` : '';
+        // Alanlar (x_concepts)
+        let concepts = '';
+        if (inst.x_concepts && inst.x_concepts.length > 0) {
+            const shown = inst.x_concepts.slice(0, 3).map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`);
+            const more = inst.x_concepts.length > 3 ? `<span class='concept-badge concept-badge-more'>+${inst.x_concepts.length - 3} alan</span>` : '';
+            concepts = shown.join(' ') + more;
+        }
+        // Wikipedia, Wikidata, ROR linkleri (ikon + metin)
+        const ids = inst.ids || {};
+        const wikipedia = ids.wikipedia ? `<a href='${ids.wikipedia}' target='_blank' title='Wikipedia' class='institution-link'><span style='font-size:1.1em;'>📖</span> Wikipedia</a>` : '';
+        const wikidata = ids.wikidata ? `<a href='${ids.wikidata}' target='_blank' title='Wikidata' class='institution-link'><span style='font-size:1.1em;'>🗃️</span> Wikidata</a>` : '';
+        const ror = inst.ror ? `<a href='${inst.ror}' target='_blank' title='ROR' class='institution-link'><span style='font-size:1.1em;'>🏢</span> ROR</a>` : '';
+        // Roller (en çok yayına sahip ilk rol)
+        let topRole = '';
+        if (Array.isArray(inst.roles) && inst.roles.length > 0) {
+            const sortedRoles = inst.roles.slice().sort((a, b) => (b.works_count || 0) - (a.works_count || 0));
+            const role = sortedRoles[0];
+            if (role && role.role) {
+                topRole = `<span class='institution-meta-badge' title='Rol'>Rol: ${escapeHtml(role.role)} (${role.works_count})</span>`;
+            }
+        }
+        const image = inst.image_thumbnail_url ? `<img src='${inst.image_thumbnail_url}' alt='Kurum Logosu' class='institution-logo' style='width:48px;height:48px;border-radius:50%;margin-bottom:0.7em;'>` : '';
+        // Tüm Yayınlar butonu (yazar kartındaki gibi)
+        const allWorksBtn = typeof inst.works_count === 'number' && inst.works_count > 0 && inst.works_api_url ? `<button class="btn-primary institution-works-btn" data-institution-id="${inst.id}" data-works-url="${inst.works_api_url}" data-initial-count="${inst.works_count}">Tüm Yayınlar (${inst.works_count})</button>` : '';
+        
+        // Kaydetme ve kaldırma butonları
+        const openAlexId = inst.id.startsWith('https://openalex.org/') ? inst.id.split('/').pop() : inst.id;
+        const isSaved = savedIds.includes(openAlexId);
+        let saveBtn = '';
+        let removeBtn = '';
+        if (loggedIn) {
+            if (isSaved) {
+                saveBtn = `<button class="btn-primary save-institution-btn saved" data-institution-id="${openAlexId}" disabled>Kaydedildi</button>`;
+                removeBtn = `<button class="btn-secondary remove-institution-btn" data-institution-id="${openAlexId}">Kaldır</button>`;
+            } else {
+                saveBtn = `<button class="btn-primary save-institution-btn" data-institution-id="${openAlexId}">Kitaplığa Kaydet</button>`;
+            }
+        }
+
+        return `
+            <div class="paper-card institution-card" data-institution-id="${openAlexId}">
+                ${image}
+                <div class="paper-title"><a href="#" class="institution-detail-link" data-institution-id="${inst.id}">${escapeHtml(inst.display_name)}</a></div>
+                <div class="paper-meta">
+                    ${country}
+                    ${type}
+                    ${city}
+                    ${region}
+                    ${topRole}
+                </div>
+                <div class="paper-meta">
+                    ${concepts}
+                </div>
+                <div class="paper-meta">
+                    ${hindex}
+                    ${i10}
+                    ${meanCited}
+                </div>
+                <div class="paper-meta">
+                    ${cited}
+                    ${wikipedia}
+                    ${wikidata}
+                    ${ror}
+                </div>
+                <div class="paper-meta" style="margin-top:0.7em;">
+                    ${allWorksBtn}
+                    ${saveBtn}
+                    ${removeBtn}
+                </div>
+            </div>
+        `;
+    }
+
+    // Yazar kartı render fonksiyonu (buton eklenmiş hali)
+    async function renderAuthorCardWithSave(author, savedIds, loggedIn) {
+        const orcid = author.orcid ? `<a href='${author.orcid}' target='_blank' title='ORCID'><span style='font-size:1.1em;'>🆔</span> ORCID</a>` : '';
+        const works = typeof author.works_count === 'number' && author.works_count > 0 ? `<a href="#" class="author-works-link" data-author-id="${author.id}" data-works-url="${author.works_api_url}">Tüm Yayınlar (${author.works_count})</a>` : '';
+        const cited = typeof author.cited_by_count === 'number' ? `<span title='Toplam Atıf'>⭐ ${author.cited_by_count}</span>` : '';
+        const hindex = author.summary_stats && typeof author.summary_stats.h_index === 'number' ? `<span title='h-index'>h-index: ${author.summary_stats.h_index}</span>` : '';
+        const i10 = author.summary_stats && typeof author.summary_stats.i10_index === 'number' ? `<span title='i10-index'>i10: ${author.summary_stats.i10_index}</span>` : '';
+        const meanCited = author.summary_stats && typeof author.summary_stats['2yr_mean_citedness'] === 'number' ? `<span title='2 Yıllık Ortalama Atıf'>2Y Atıf Ort: ${author.summary_stats['2yr_mean_citedness'].toFixed(2)}</span>` : '';
+        const insts = (author.last_known_institutions || []).map(i => escapeHtml(i.display_name)).join(', ');
+        const affiliations = (author.affiliations || []).map(a => {
+            const years = a.years && a.years.length > 0 ? ` (${a.years[0]}-${a.years[a.years.length-1]})` : '';
+            return a.institution && a.institution.display_name ? `${escapeHtml(a.institution.display_name)}${years}` : '';
+        }).filter(Boolean).join(', ');
+        let concepts = '';
+        if (author.x_concepts && author.x_concepts.length > 0) {
+            const shown = author.x_concepts.slice(0, 3).map(c => `<span class='concept-badge' title='Skor: ${c.score}'>${escapeHtml(c.display_name)}</span>`);
+            const more = author.x_concepts.length > 3 ? `<span class='concept-badge concept-badge-more'>+${author.x_concepts.length - 3} alan</span>` : '';
+            concepts = shown.join(' ') + more;
+        }
+        const ids = author.ids || {};
+        const scopus = ids.scopus ? `<a href='${ids.scopus}' target='_blank' title='Scopus'><span style='font-size:1.1em;'>🔗</span> Scopus</a>` : '';
+        const twitter = ids.twitter ? `<a href='https://twitter.com/${ids.twitter}' target='_blank' title='Twitter'><span style='font-size:1.1em;'>🐦</span> Twitter</a>` : '';
+        const wikipedia = ids.wikipedia ? `<a href='${ids.wikipedia}' target='_blank' title='Wikipedia'><span style='font-size:1.1em;'>📖</span> Wikipedia</a>` : '';
+        const altNames = (author.display_name_alternatives || []).length > 0 ? `<div class='author-alt-names'><strong>Alternatif İsimler:</strong> ${author.display_name_alternatives.map(escapeHtml).join(', ')}</div>` : '';
+        // Kitaplığa kaydet butonu
+        let saveBtn = '';
+        let removeBtn = '';
+        if (loggedIn) {
+            const openAlexId = author.id.startsWith('https://openalex.org/') ? author.id.split('/').pop() : author.id;
+            if (savedIds.includes(openAlexId)) {
+                saveBtn = `<button class="btn-primary save-author-btn" data-author-id="${openAlexId}" disabled>Kaydedildi</button>`;
+                removeBtn = `<button class="btn-secondary remove-author-btn" data-author-id="${openAlexId}">Kaldır</button>`;
+            } else {
+                saveBtn = `<button class="btn-primary save-author-btn" data-author-id="${openAlexId}">Kitaplığa Kaydet</button>`;
+            }
+        }
+        return `
+            <div class="paper-card author-card">
+                <div class="paper-title"><a href="#" class="author-detail-link" data-author-id="${author.id}">${escapeHtml(author.display_name)}</a></div>
+                ${altNames}
+                <div class="paper-meta">
+                    ${orcid}
+                    ${works}
+                    ${cited}
+                    ${hindex}
+                    ${i10}
+                    ${meanCited}
+                    ${scopus}
+                    ${twitter}
+                    ${wikipedia}
+                </div>
+                ${insts ? `<div class='paper-meta'><span>🏢 Son Kurum: ${insts}</span></div>` : ''}
+                ${concepts ? `<div class='author-concepts-row'>${concepts}</div>` : ''}
+                ${(saveBtn || removeBtn) ? `<div class='paper-meta'>${saveBtn} ${removeBtn}</div>` : ''}
+            </div>
+        `;
+    }
+
+    // Yazar arama sonuçlarını render eden fonksiyonu güncelle
+    async function renderAuthorSearchResults(authors) {
+        const count = authorTotalCount || (authors && authors.length ? authors.length : 0);
+        const countHtml = `<span><b>${count}</b></span> <span>yazar bulundu</span>`;
+        const countDiv = document.getElementById('author-search-result-count');
+        if (countDiv) {
+            if (authors && authors.length > 0) {
+                countDiv.innerHTML = countHtml;
+                countDiv.style.display = '';
+            } else {
+                countDiv.innerHTML = '';
+                countDiv.style.display = 'none';
+            }
+        }
+        if (!authors || authors.length === 0) {
+            return `<div class="error-message">Yazar bulunamadı.</div>`;
+        }
+        // Giriş ve kaydedilen yazarlar kontrolü
+        const loggedIn = await isUserLoggedIn();
+        const savedIds = loggedIn ? await getSavedAuthorIds() : [];
+        // Her kartı async render et
+        const cards = await Promise.all(authors.map(a => renderAuthorCardWithSave(a, savedIds, loggedIn)));
+        return `<div class='papers-list'>${cards.join('')}</div>`;
+    }
+
+    // Yazar arama sonuçları DOM'a basılırken butonlara event ekle
+    async function afterRenderAuthorSearchResults() {
+        const loggedIn = await isUserLoggedIn();
+        if (!loggedIn) return;
+        document.querySelectorAll('.save-author-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const authorId = btn.getAttribute('data-author-id');
+                btn.disabled = true;
+                btn.textContent = 'Kaydediliyor...';
+                try {
+                    const resp = await fetch('/api/v1/libraries/authors', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ authorsOpenAlexID: authorId })
+                    });
+                    if (resp.ok) {
+                        btn.textContent = 'Kaydedildi';
+                    } else {
+                        const err = await resp.text();
+                        btn.textContent = 'Hata';
+                        setTimeout(() => { btn.textContent = 'Kitaplığa Kaydet'; btn.disabled = false; }, 2000);
+                        alert('Kaydedilemedi: ' + err);
+                    }
+                } catch (err) {
+                    btn.textContent = 'Hata';
+                    setTimeout(() => { btn.textContent = 'Kitaplığa Kaydet'; btn.disabled = false; }, 2000);
+                    alert('Kaydedilemedi: ' + err.message);
+                }
+            });
+        });
+    }
+
+    // fetchAndRenderAuthors fonksiyonunu güncelle: render sonrası afterRenderAuthorSearchResults çağrılacak
+    async function fetchAndRenderAuthors(query, filters, sort, page) {
+        authorSearchLoading.style.display = 'block';
+        try {
+            const url = buildOpenAlexAuthorUrl(query, filters, sort, page);
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                const errorText = await resp.text();
+                throw new Error(`OpenAlex API hatası (${resp.status}): ${errorText}`);
+            }
+            const data = await resp.json();
+            authorTotalCount = data.meta && data.meta.count ? data.meta.count : 0;
+            authorTotalPages = Math.ceil(authorTotalCount / 12);
+            if (!data.results || data.results.length === 0) {
+                authorSearchResult.innerHTML = '<div class="error-message">Yazar bulunamadı.</div>';
+            } else {
+                let paginationHtml = renderAuthorPagination(page, authorTotalPages);
+                authorSearchResult.innerHTML =
+                    paginationHtml +
+                    await renderAuthorSearchResults(data.results) +
+                    paginationHtml;
+                await afterRenderAuthorSearchResults();
+            }
+        } catch (err) {
+            let msg = err.message || '';
+            if (msg.includes('raw_institution_name.search is not a valid field') || msg.includes('Invalid query parameters error')) {
+                authorSearchResult.innerHTML = `<div class='error-message'>Kurum adı ile serbest metin araması desteklenmiyor, lütfen kurum adını listeden seçin.</div>`;
+            } else {
+                authorSearchResult.innerHTML = `<div class='error-message'>Yazarlar alınırken hata oluştu: ${msg}</div>`;
+            }
+        }
+        authorSearchLoading.style.display = 'none';
+    }
+
+    // afterRenderAuthorSearchResults fonksiyonunun hemen altına, remove-author-btn için event handler ekle
+    async function afterRenderRemoveAuthorBtns() {
+        const loggedIn = await isUserLoggedIn();
+        if (!loggedIn) return;
+        document.querySelectorAll('.remove-author-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const authorId = btn.getAttribute('data-author-id');
+                btn.disabled = true;
+                btn.textContent = 'Kaldırılıyor...';
+                try {
+                    const resp = await fetch(`/api/v1/libraries/authors/${authorId}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (resp.ok) {
+                        // Kartı DOM'dan kaldır
+                        const card = btn.closest('.author-card');
+                        if (card) card.remove();
+                    } else {
+                        const err = await resp.text();
+                        btn.textContent = 'Hata';
+                        setTimeout(() => { btn.textContent = 'Kaldır'; btn.disabled = false; }, 2000);
+                        alert('Kaldırılamadı: ' + err);
+                    }
+                } catch (err) {
+                    btn.textContent = 'Hata';
+                    setTimeout(() => { btn.textContent = 'Kaldır'; btn.disabled = false; }, 2000);
+                    alert('Kaldırılamadı: ' + err.message);
+                }
+            });
+        });
+    }
+
+    // Makale arama sonuçları DOM'a basılırken butonlara event ekle
+    async function afterRenderPaperSearchResults() {
+        const loggedIn = await isUserLoggedIn();
+        if (!loggedIn) return;
+        document.querySelectorAll('.save-work-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const workId = btn.getAttribute('data-work-id');
+                btn.disabled = true;
+                btn.textContent = 'Kaydediliyor...';
+                try {
+                    const resp = await fetch('/api/v1/libraries/works', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ openAlexId: workId })
+                    });
+                    if (resp.ok) {
+                        btn.textContent = 'Kaydedildi';
+                    } else {
+                        const err = await resp.text();
+                        btn.textContent = 'Hata';
+                        setTimeout(() => { btn.textContent = 'Kitaplığa Kaydet'; btn.disabled = false; }, 2000);
+                        alert('Kaydedilemedi: ' + err);
+                    }
+                } catch (err) {
+                    btn.textContent = 'Hata';
+                    setTimeout(() => { btn.textContent = 'Kitaplığa Kaydet'; btn.disabled = false; }, 2000);
+                    alert('Kaydedilemedi: ' + err.message);
+                }
+            });
+        });
+    }
+
+    // afterRenderPaperSearchResults fonksiyonunun hemen altına, remove-work-btn için event handler ekle
+    async function afterRenderRemoveWorkBtns() {
+        const loggedIn = await isUserLoggedIn();
+        if (!loggedIn) return;
+        document.querySelectorAll('.remove-work-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const workId = btn.getAttribute('data-work-id');
+                btn.disabled = true;
+                btn.textContent = 'Kaldırılıyor...';
+                try {
+                    const resp = await fetch(`/api/v1/libraries/works/${workId}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (resp.ok) {
+                        // Kartı DOM'dan kaldır
+                        const card = btn.closest('.paper-card');
+                        if (card) card.remove();
+                    } else {
+                        const err = await resp.text();
+                        btn.textContent = 'Hata';
+                        setTimeout(() => { btn.textContent = 'Kaldır'; btn.disabled = false; }, 2000);
+                        alert('Kaldırılamadı: ' + err);
+                    }
+                } catch (err) {
+                    btn.textContent = 'Hata';
+                    setTimeout(() => { btn.textContent = 'Kaldır'; btn.disabled = false; }, 2000);
+                    alert('Kaldırılamadı: ' + err.message);
+                }
+            });
+        });
+    }
+
+    async function afterRenderInstitutionSearchResults() {
+        // Kurum kaydetme butonları için event listener'ları ekle
+        document.querySelectorAll('.save-institution-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const institutionId = btn.getAttribute('data-institution-id');
+                const isSaved = btn.classList.contains('saved');
+                
+                try {
+                    if (isSaved) {
+                        // Kurumdan çıkar
+                        const resp = await fetch(`/api/v1/libraries/institutions/${institutionId}`, {
+                            method: 'DELETE',
+                            credentials: 'include'
+                        });
+                        if (resp.ok) {
+                            btn.textContent = 'Kitaplığa Kaydet';
+                            btn.classList.remove('saved');
+                        }
+                    } else {
+                        // Kuruma ekle
+                        const resp = await fetch('/api/v1/libraries/institutions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ openAlexId: institutionId })
+                        });
+                        if (resp.ok) {
+                            btn.textContent = 'Kaydedildi';
+                            btn.classList.add('saved');
+                        }
+                    }
+                } catch (err) {
+                    console.error('Kurum kaydetme hatası:', err);
+                }
+            });
+        });
+    }
+
+    async function afterRenderRemoveInstitutionBtns() {
+        // Kurum kaldırma butonları için event listener'ları ekle
+        document.querySelectorAll('.remove-institution-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const institutionId = btn.getAttribute('data-institution-id');
+                btn.disabled = true;
+                btn.textContent = 'Kaldırılıyor...';
+                try {
+                    const resp = await fetch(`/api/v1/libraries/institutions/${institutionId}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (resp.ok) {
+                        // Kartı DOM'dan kaldır
+                        const card = btn.closest('.paper-card');
+                        if (card) card.remove();
+                    } else {
+                        const err = await resp.text();
+                        btn.textContent = 'Hata';
+                        setTimeout(() => { btn.textContent = 'Kaldır'; btn.disabled = false; }, 2000);
+                        alert('Kaldırılamadı: ' + err);
+                    }
+                } catch (err) {
+                    btn.textContent = 'Hata';
+                    setTimeout(() => { btn.textContent = 'Kaldır'; btn.disabled = false; }, 2000);
+                    alert('Kaldırılamadı: ' + err.message);
+                }
+            });
+        });
+    }
+
+    // Profil sekmesinde yazarlar tabı render edildikten sonra afterRenderRemoveAuthorBtns fonksiyonunu çağır
+    // (tabName === 'authors') bloğunda, tabContent.innerHTML doldurulduktan hemen sonra ekle:
+    // await afterRenderRemoveAuthorBtns();
 }); 
+
+// Kullanıcı giriş kontrolü için global fonksiyon
+async function isUserLoggedIn() {
+    try {
+        const resp = await fetch('/api/v1/users/profile', { credentials: 'include' });
+        return resp.ok;
+    } catch { return false; }
+}
+
+// Kullanıcının kitaplığındaki makale id'lerini almak için global fonksiyon
+async function getSavedWorkIds() {
+    try {
+        const resp = await fetch('/api/v1/libraries/works', { credentials: 'include' });
+        if (!resp.ok) return [];
+        const works = await resp.json();
+        return Array.isArray(works) ? works.map(w => w.openAlexId) : [];
+    } catch { return []; }
+}
 
 // Makale detay modalı render fonksiyonu
 function renderWorkDetailModal(work) {

@@ -253,10 +253,18 @@
         </div>
         <!-- Profilim Bölümü -->
         <section id="profile-section" class="main-section" aria-labelledby="profile-title">
-            <h2 id="profile-title">Profilim</h2>
-            <div class="section-desc">Kullanıcı bilgilerinizi ve analiz geçmişinizi görüntüleyin.</div>
-            <div id="profile-loading" class="loading" style="display:none;">Yükleniyor...</div>
             <div id="profile-result"></div>
+            <div class="profile-tabs-wrap">
+                <div class="profile-tabs">
+                    <button class="profile-tab active" data-tab="articles">Makaleler</button>
+                    <button class="profile-tab" data-tab="authors">Yazarlar</button>
+                    <button class="profile-tab" data-tab="institutions">Kurumlar</button>
+                </div>
+            </div>
+            <div id="profile-loading" class="loading" style="display:none;">Yükleniyor...</div>
+            <div id="profile-tab-content">
+                <!-- Sekme içerikleri buraya gelecek -->
+            </div>
         </section>
     </main>
     <footer class="main-footer">
