@@ -2944,6 +2944,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabContent) {
             tabContent.innerHTML = '<div style="padding:2em 0 0 0;text-align:center;color:#888;">Henüz analiz kaydetmediniz.</div>';
         }
+        // Sayfa ilk açıldığında Makaleler sekmesini otomatik olarak yükle
+        const firstTab = document.querySelector('.profile-tab[data-tab="articles"]');
+        if (firstTab) {
+            firstTab.click();
+        }
     }
 
     // Kullanıcının kitaplığındaki yazar id'lerini almak için fonksiyon
