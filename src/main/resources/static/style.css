@@ -4571,3 +4571,119 @@ footer.main-footer p {
     border-color: var(--color-danger-dark);
 }
 
+.profile-popup {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    background: #fff;
+    border-radius: 1.1em;
+    box-shadow: 0 2px 16px 0 rgba(0,0,0,0.13);
+    padding: 1.1em 1.3em 1.1em 1.3em;
+    min-width: 260px;
+    max-width: 98vw;
+    width: 340px;
+    z-index: 1002;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7em;
+}
+
+.profile-popup .profile-email {
+    font-size: 1.01rem;
+    text-align: left;
+    font-weight: 600;
+    color: #64748b;
+    white-space: normal;
+    overflow: visible;
+    margin-bottom: 0.2em;
+    word-break: break-all;
+}
+
+.profile-popup .profile-name {
+    font-size: 1.13rem;
+    text-align: left;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+    font-weight: 700;
+    color: #2563eb;
+    word-break: break-word;
+}
+
+.profile-popup .profile-name.center {
+    text-align: center;
+    margin-bottom: 1.1em;
+}
+
+.profile-popup .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.9em 2.2em;
+    font-size: 1.07rem;
+    border-radius: 1.2em;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 0.7em;
+    cursor: pointer;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .profile-popup {
+        min-width: 0;
+        width: 98vw;
+        right: 0;
+        left: 0;
+        margin: 0 auto;
+        padding: 0.7em 0.2em 1.1em 0.2em;
+    }
+    .profile-popup .profile-email,
+    .profile-popup .profile-name {
+        max-width: 90vw;
+    }
+}
+
+.profile-popup-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    margin-bottom: 1.1em;
+}
+
+.profile-popup-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #2563eb;
+    margin-bottom: 0.3em;
+}
+
+.profile-popup .profile-name,
+.profile-popup .profile-email {
+    text-align: center;
+    width: 100%;
+}
+
+.profile-popup .profile-name {
+    font-size: 1.13rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin-bottom: 0.1em;
+    margin-top: 0.1em;
+}
+
+.profile-popup .profile-email {
+    font-size: 1.01rem;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 0.1em;
+    word-break: break-all;
+}
+

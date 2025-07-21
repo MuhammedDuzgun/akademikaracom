@@ -1420,7 +1420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             if (resp.status === 401) {
-                window.location.href = '/login.html';
+                window.location.href = '/login';
                 return;
             }
             if (!resp.ok) throw new Error(await resp.text());
@@ -1434,9 +1434,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderProfile(user) {
-        // Sadece sağ üstte, küçük ve yuvarlak profil fotoğrafı
         if (user.picture) {
-            return `<img class='profile-avatar' src='${escapeHtml(user.picture)}' alt='Profil Fotoğrafı' style="width:40px;height:40px;border-radius:50%;object-fit:cover;position:fixed;top:18px;right:24px;z-index:1001;box-shadow:0 1px 4px 0 rgba(0,0,0,0.10);">`;
+            let fullName = ((user.firstName || '') + ' ' + (user.lastName || '')).trim();
+            return `
+                <div id="profile-avatar-wrap" style="position:fixed;top:18px;right:24px;z-index:1001;">
+                    <img class='profile-avatar' id='profile-avatar-img' src='${escapeHtml(user.picture)}' alt='Profil Fotoğrafı' style="width:40px;height:40px;border-radius:50%;object-fit:cover;box-shadow:0 1px 4px 0 rgba(0,0,0,0.10);cursor:pointer;">
+                    <div id="profile-popup" class="profile-popup">
+                        <div class="profile-popup-inner">
+                            <img src='${escapeHtml(user.picture)}' alt='Profil Fotoğrafı' class="profile-popup-avatar">
+                            <div class="profile-name">${escapeHtml(fullName)}</div>
+                            <div class="profile-email">${escapeHtml(user.email || '')}</div>
+                        </div>
+                        <a id="logout-btn" class="btn-primary">Çıkış Yap</a>
+                    </div>
+                </div>
+            `;
         }
         return '';
     }
@@ -3686,3 +3698,24 @@ function renderInstitutionDetailModal(institution) {
     
     return html;
 } 
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    // Profil avatarı popup açma/kapama ve çıkış
+    document.body.addEventListener('click', function(e) {
+        const avatar = document.getElementById('profile-avatar-img');
+        const popup = document.getElementById('profile-popup');
+        if (avatar && popup) {
+            if (e.target === avatar) {
+                popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+            } else if (!popup.contains(e.target)) {
+                popup.style.display = 'none';
+            }
+        }
+        // Çıkış butonu
+        if (e.target && e.target.id === 'logout-btn') {
+            window.location.href = '/logout';
+        }
+    });
+    // ... existing code ...
+}); 
