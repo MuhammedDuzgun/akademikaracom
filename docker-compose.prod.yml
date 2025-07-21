@@ -9,6 +9,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
       - akademikaracom-db-data:/var/lib/mysql
+      - ./mysql_backups:/backup
     networks:
       akademikaracom-network:
 
