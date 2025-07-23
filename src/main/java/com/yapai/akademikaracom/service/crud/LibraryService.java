@@ -9,8 +9,6 @@ import com.yapai.akademikaracom.exception.ResourceNotFoundException;
 import com.yapai.akademikaracom.repository.*;
 import com.yapai.akademikaracom.request.AddAuthorRequest;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,13 +38,7 @@ public class LibraryService {
 
     //add author
     @Transactional
-    public String addAuthorToLibrary(Authentication authentication, AddAuthorRequest request) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public String addAuthorToLibrary(OAuth2User oAuth2User, AddAuthorRequest request) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -72,13 +64,7 @@ public class LibraryService {
     }
 
     //get authors
-    public List<Author> getAuthorsFromLibrary(Authentication authentication) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public List<Author> getAuthorsFromLibrary(OAuth2User oAuth2User) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -89,13 +75,7 @@ public class LibraryService {
 
     //delete authors
     @Transactional
-    public void deleteAuthorFromLibrary(Authentication authentication, String openAlexId) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public void deleteAuthorFromLibrary(OAuth2User oAuth2User, String openAlexId) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -111,13 +91,7 @@ public class LibraryService {
     }
 
     //add work
-    public String addWorkToLibrary(Authentication authentication, String openAlexId) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public String addWorkToLibrary(OAuth2User oAuth2User, String openAlexId) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -143,13 +117,7 @@ public class LibraryService {
     }
 
     //get works
-    public List<Work> getWorksFromLibrary(Authentication authentication) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public List<Work> getWorksFromLibrary(OAuth2User oAuth2User) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -159,13 +127,7 @@ public class LibraryService {
     }
 
     //delete work
-    public void deleteWorkFromLibrary(Authentication authentication, String openAlexId) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public void deleteWorkFromLibrary(OAuth2User oAuth2User, String openAlexId) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -181,13 +143,7 @@ public class LibraryService {
     }
 
     //add institution
-    public String addInstitutionToLibrary(Authentication authentication, String openAlexId) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public String addInstitutionToLibrary(OAuth2User oAuth2User, String openAlexId) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -213,13 +169,7 @@ public class LibraryService {
     }
 
     //get institutions
-    public List<Institution> getInstitutionsFromLibrary(Authentication authentication) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public List<Institution> getInstitutionsFromLibrary(OAuth2User oAuth2User) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)
@@ -229,13 +179,7 @@ public class LibraryService {
     }
 
     //delete institution
-    public void deleteInstitutionFromLibrary(Authentication authentication, String openAlexId) {
-        if (authentication == null) {
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        }
-
-        OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        OAuth2User oAuth2User = token.getPrincipal();
+    public void deleteInstitutionFromLibrary(OAuth2User oAuth2User, String openAlexId) {
         String email = oAuth2User.getAttribute("email");
 
         User user = userRepository.findByEmail(email)

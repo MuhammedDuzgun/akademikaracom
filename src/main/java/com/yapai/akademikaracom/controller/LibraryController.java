@@ -9,7 +9,8 @@ import com.yapai.akademikaracom.request.AddWorkRequest;
 import com.yapai.akademikaracom.service.crud.LibraryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,71 +27,71 @@ public class LibraryController {
 
     //add author
     @PostMapping("/authors")
-    public ResponseEntity<String> addAuthorToLibrary(Authentication authentication,
+    public ResponseEntity<String> addAuthorToLibrary(@AuthenticationPrincipal OAuth2User oAuth2User,
                                                      @RequestBody AddAuthorRequest request) {
-        String response = libraryService.addAuthorToLibrary(authentication, request);
+        String response = libraryService.addAuthorToLibrary(oAuth2User, request);
         return ResponseEntity.ok(response);
     }
 
     //get authors
     @GetMapping("/authors")
     public ResponseEntity<List<Author>> getAuthorsFromLibrary
-            (Authentication authentication) {
-        List<Author> authorsFromLibrary = libraryService.getAuthorsFromLibrary(authentication);
+            (@AuthenticationPrincipal OAuth2User oAuth2User) {
+        List<Author> authorsFromLibrary = libraryService.getAuthorsFromLibrary(oAuth2User);
         return ResponseEntity.ok(authorsFromLibrary);
     }
 
     //delete author
     @DeleteMapping("/authors/{id}")
-    public ResponseEntity<?> deleteAuthorFromLibrary(Authentication authentication,
+    public ResponseEntity<?> deleteAuthorFromLibrary(@AuthenticationPrincipal OAuth2User oAuth2User,
                                                      @PathVariable("id") String openAlexId) {
-        libraryService.deleteAuthorFromLibrary(authentication, openAlexId);
+        libraryService.deleteAuthorFromLibrary(oAuth2User, openAlexId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     //add work
     @PostMapping("/works")
-    public ResponseEntity<String> addWorkToLibrary(Authentication authentication,
+    public ResponseEntity<String> addWorkToLibrary(@AuthenticationPrincipal OAuth2User oAuth2User,
                                                    @RequestBody AddWorkRequest request) {
-        String response = libraryService.addWorkToLibrary(authentication, request.openAlexId());
+        String response = libraryService.addWorkToLibrary(oAuth2User, request.openAlexId());
         return ResponseEntity.ok(response);
     }
 
     //get works
     @GetMapping("/works")
-    public ResponseEntity<List<Work>> getWorksFromLibrary(Authentication authentication) {
-        List<Work> worksFromLibrary = libraryService.getWorksFromLibrary(authentication);
+    public ResponseEntity<List<Work>> getWorksFromLibrary(@AuthenticationPrincipal OAuth2User oAuth2User) {
+        List<Work> worksFromLibrary = libraryService.getWorksFromLibrary(oAuth2User);
         return ResponseEntity.ok(worksFromLibrary);
     }
 
     //delete work
     @DeleteMapping("/works/{id}")
-    public ResponseEntity<?> deleteWorkFromLibrary(Authentication authentication,
+    public ResponseEntity<?> deleteWorkFromLibrary(@AuthenticationPrincipal OAuth2User oAuth2User,
                                                    @PathVariable("id") String openAlexId) {
-        libraryService.deleteWorkFromLibrary(authentication, openAlexId);
+        libraryService.deleteWorkFromLibrary(oAuth2User, openAlexId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     //add institution
     @PostMapping("/institutions")
-    public ResponseEntity<String> addInstitutionToLibrary(Authentication authentication,
+    public ResponseEntity<String> addInstitutionToLibrary(@AuthenticationPrincipal OAuth2User oAuth2User,
                                                           @RequestBody AddInstitutionRequest request) {
-        String response = libraryService.addInstitutionToLibrary(authentication, request.openAlexId());
+        String response = libraryService.addInstitutionToLibrary(oAuth2User, request.openAlexId());
         return ResponseEntity.ok(response);
     }
 
     //get institutions
     @GetMapping("/institutions")
-    public ResponseEntity<List<Institution>> getInstitutionsFromLibrary(Authentication authentication) {
-        List<Institution> institutionsFromLibrary = libraryService.getInstitutionsFromLibrary(authentication);
+    public ResponseEntity<List<Institution>> getInstitutionsFromLibrary(@AuthenticationPrincipal OAuth2User oAuth2User) {
+        List<Institution> institutionsFromLibrary = libraryService.getInstitutionsFromLibrary(oAuth2User);
         return ResponseEntity.ok(institutionsFromLibrary);
     }
 
     //delete institution
     @DeleteMapping("/institutions/{id}")
-    public ResponseEntity<?> deleteInstitutionFromLibrary(Authentication authentication,
+    public ResponseEntity<?> deleteInstitutionFromLibrary(@AuthenticationPrincipal OAuth2User oAuth2User,
                                                           @PathVariable("id") String openAlexId) {
-        libraryService.deleteInstitutionFromLibrary(authentication, openAlexId);
+        libraryService.deleteInstitutionFromLibrary(oAuth2User, openAlexId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
