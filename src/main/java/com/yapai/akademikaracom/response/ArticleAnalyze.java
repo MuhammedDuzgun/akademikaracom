@@ -33,7 +33,29 @@ public class ArticleAnalyze {
     public ArticleAnalyze() {
     }
 
-    public ArticleAnalyze(String title, List<String> authors, List<String> institutions, List<String> emails, String journalName, String publicationDate, String doi, List<String> keywords, Map<String, String> sections, String summary, String strengths, String weaknesses, String contribution, String missingPoints, String methodology, String researchQuestion, String mainFindings, String discussionSummary, List<String> mostCitedSources, int totalSourcesCount, String sourceDiversityAndRecency, String writingQuality, String fluencyAndClarity, String scientificTerminologySuitability) {
+    public ArticleAnalyze(String title,
+                          List<String> authors,
+                          List<String> institutions,
+                          List<String> emails, String journalName,
+                          String publicationDate,
+                          String doi,
+                          List<String> keywords,
+                          Map<String, String> sections,
+                          String summary,
+                          String strengths,
+                          String weaknesses,
+                          String contribution,
+                          String missingPoints,
+                          String methodology,
+                          String researchQuestion,
+                          String mainFindings,
+                          String discussionSummary,
+                          List<String> mostCitedSources,
+                          int totalSourcesCount,
+                          String sourceDiversityAndRecency,
+                          String writingQuality,
+                          String fluencyAndClarity,
+                          String scientificTerminologySuitability) {
         this.title = title;
         this.authors = authors;
         this.institutions = institutions;

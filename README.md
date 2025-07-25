@@ -1,5 +1,7 @@
 # akademikara.com
 
+[akademikara.com](https://akademikara.com)
+
 Akademikara, araştırmacılar ve öğrenciler için modern, yapay zeka destekli bir **akademik araştırma asistanıdır**. PDF makale analizi, literatür tarama, yazar/kurum arama ve kişisel kütüphane yönetimi gibi işlevlerle akademik çalışmaları kolaylaştırır.
 
 ## Özellikler
